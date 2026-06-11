@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leibnitz - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark-bg: #0a0e27;
+            --darker-bg: #050812;
+            --card-bg: #0f1535;
+            --signal-green: #00ff88;
+            --signal-blue: #00d4ff;
+            --signal-red: #ff3344;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b8cc;
+            --border-color: #1a2847;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        .header-brand {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, rgba(5, 8, 18, 0.95) 0%, rgba(5, 8, 18, 0.9) 100%);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.2rem 2rem;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .leibnitz-name {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--signal-green) 0%, var(--signal-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 2rem;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--signal-green);
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 100px auto 4rem;
+            padding: 0 2rem;
+        }
+
+        .welcome {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .welcome h1 {
+            font-size: 2.8rem;
+            margin-bottom: 0.5rem;
+            color: var(--signal-green);
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: var(--signal-green);
+            box-shadow: 0 20px 40px rgba(0, 255, 136, 0.15);
+        }
+
+        .card h3 {
+            color: var(--signal-green);
+            margin-bottom: 1.5rem;
+            font-size: 1.4rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--signal-green);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .file-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            padding: 1rem;
+            background: rgba(5, 8, 18, 0.6);
+            border-radius: 0.5rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.8rem 1.8rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--signal-green) 0%, #00cc6f 100%);
+            color: #050812;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--signal-green);
+            border: 2px solid var(--signal-green);
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header-brand">
+        <div>
+            <h1 class="leibnitz-name">Leibnitz</h1>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="welcome">
+            <h1>Welcome back, <span style="color:var(--signal-blue);">{{ session.get('user', 'User') }}</span>!</h1>
+            <p style="color:var(--text-secondary);">Your Signal Processing Workspace</p>
+        </div>
+
+        <div class="card-grid">
+            <!-- Quick Upload Card -->
+            <div class="card">
+                <h3>🚀 Quick Upload</h3>
+                <div class="upload-area" id="dashUploadArea" onclick="document.getElementById('dashFileInput').click()">
+                    <p id="dashUploadText" style="margin-bottom:1rem;">Drop your signal file here</p>
+                    <p style="color:var(--text-secondary); font-size:0.95rem;">.csv • .txt • .npy • .wav</p>
+                    <input type="file" id="dashFileInput" style="display:none;" accept=".csv,.txt,.npy,.wav">
+                </div>
+                <button class="btn btn-primary" id="dashUploadBtn" style="width:100%; margin-top:1.5rem;" onclick="quickUpload()">
+                    Upload & Process
+                </button>
+            </div>
+
+            <!-- Recent Files -->
+            <div class="card">
+                <h3>📁 Recent Files</h3>
+                <div class="file-list" id="fileList">
+                    <p class="status">No files uploaded yet.</p>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h3>⚡ Quick Actions</h3>
+                <div style="display:flex; flex-direction:column; gap:1rem;">
+                    <button class="btn btn-secondary" onclick="window.location.href='/#upload-section'">New FFT Analysis</button>
+                    <button class="btn btn-secondary" onclick="window.location.href='/#upload-section'">Apply Filter</button>
+                    <button class="btn btn-secondary" onclick="window.location.href='/#upload-section'">Wavelet Transform</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center; margin-top:4rem; color:var(--text-secondary);">
+            <p>Need help? Check out the <a href="/" style="color:var(--signal-green);">Homepage</a> or contact support.</p>
+        </div>
+    </div>
+
+    <script>
+        // File selection UI feedback
+        document.getElementById('dashFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('dashUploadText').innerHTML = `<strong>Selected: ${file.name}</strong>`;
+            }
+        });
+
+        // Simple quick upload handler
+        function quickUpload() {
+            const fileInput = document.getElementById('dashFileInput');
+            if (!fileInput.files.length) {
+                alert("Please select a file first");
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const btn = document.getElementById('dashUploadBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Uploading...";
+            btn.disabled = true;
+
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    alert("Please sign in first.");
+                    window.location.href = "/login";
+                    throw new Error("Unauthorized");
+                }
+                if (res.status === 402) {
+                    alert("Usage limit reached. Redirecting to payment page...");
+                    window.location.href = "/payment";
+                    throw new Error("Payment Required");
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    window.location.href = `/?file=${encodeURIComponent(data.filename)}&name=${encodeURIComponent(file.name)}&size=${file.size}`;
+                } else {
+                    alert("Upload failed: " + data.error);
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        // Demo: Mock recent files (can be replaced with real fetch later)
+        window.onload = function() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = `
+                <div class="file-item">
+                    <span>signal_sample.csv</span>
+                    <span class="status">Processed • FFT</span>
+                </div>
+                <div class="file-item">
+                    <span>ecg_data.npy</span>
+                    <span class="status">Processed • Filter</span>
+                </div>
+            `;
+        };
+    </script>
+</body>
+</html>

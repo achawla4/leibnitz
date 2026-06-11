@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leibnitz Signal Processing Suite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --dark-bg: #0a0e27;
+            --darker-bg: #050812;
+            --card-bg: #0f1535;
+            --signal-green: #00ff88;
+            --signal-red: #ff3344;
+            --signal-blue: #00d4ff;
+            --accent-gold: #ffd700;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b8cc;
+            --border-color: #1a2847;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+            color: var(--text-primary);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Branding Header */
+        .header-brand {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, rgba(5, 8, 18, 0.95) 0%, rgba(5, 8, 18, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.2rem 2rem;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .leibnitz-name {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2.2rem;
+            font-weight: 400;
+            background: linear-gradient(135deg, var(--signal-green) 0%, var(--signal-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .company-tag {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--signal-green);
+        }
+
+        /* Hero Section */
+        .hero {
+            margin-top: 80px;
+            min-height: calc(100vh - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            top: -200px;
+            right: -200px;
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 51, 68, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            bottom: -100px;
+            left: -100px;
+            animation: pulse 10s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .hero-content {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 4rem;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-text h1 {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--signal-green) 0%, var(--signal-blue) 50%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: slideInLeft 1s ease-out;
+        }
+
+        .hero-text p {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            line-height: 1.8;
+            animation: slideInLeft 1s ease-out 0.2s backwards;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1.5rem;
+            animation: slideInLeft 1s ease-out 0.4s backwards;
+        }
+
+        .btn {
+            padding: 0.9rem 2.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--signal-green) 0%, #00cc6f 100%);
+            color: var(--darker-bg);
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 50px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--signal-green);
+            border: 2px solid var(--signal-green);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 255, 136, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .signal-canvas-container {
+            position: relative;
+            height: 320px;
+            background: rgba(5, 8, 18, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+            animation: slideInRight 1s ease-out;
+        }
+
+        .signal-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Upload & Results Section */
+        .upload-section {
+            padding: 6rem 2rem;
+            background: rgba(5, 8, 18, 0.6);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .upload-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 3rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--signal-green);
+            border-radius: 1rem;
+            padding: 4rem 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(10, 14, 39, 0.4);
+        }
+
+        .drop-zone:hover {
+            background: rgba(0, 255, 136, 0.05);
+            border-color: var(--signal-blue);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .drop-zone h3 {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .results-section {
+            padding: 4rem 2rem;
+            display: none;
+            background: rgba(5, 8, 18, 0.4);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .plot-container img {
+            max-width: 100%;
+            border-radius: 0.8rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .operation-btns {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--signal-green) 0%, var(--signal-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 4rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, rgba(15, 21, 53, 0.8) 0%, rgba(10, 14, 39, 0.6) 100%);
+            border: 1px solid var(--border-color);
+            padding: 2.5rem 2rem;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--signal-green), var(--signal-blue), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--signal-green);
+            box-shadow: 0 20px 50px rgba(0, 255, 136, 0.15);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 212, 255, 0.2) 100%);
+            border: 2px solid var(--signal-green);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--signal-green);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Specs Section */
+        .specs {
+            padding: 6rem 2rem;
+            background: linear-gradient(135deg, rgba(5, 8, 18, 0.5) 0%, rgba(15, 21, 53, 0.3) 100%);
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .specs-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .specs-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .spec-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .spec-check {
+            color: var(--signal-green);
+            font-size: 1.5rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .spec-item h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.3rem;
+            color: var(--text-primary);
+        }
+
+        .spec-item p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .visualization-dual {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .mini-canvas {
+            height: 150px;
+            background: rgba(5, 8, 18, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .mini-canvas canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 6rem 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pricing-container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .price-box {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 212, 255, 0.05) 100%);
+            border: 2px solid var(--border-color);
+            padding: 3rem 2rem;
+            border-radius: 1rem;
+            margin: 3rem 0;
+        }
+
+        .price-amount {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--signal-green);
+            margin-bottom: 0.5rem;
+        }
+
+        .price-period {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .price-description {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .download-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .download-btn {
+            padding: 1rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid var(--signal-green);
+            color: var(--signal-green);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: translateY(-3px);
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            background: var(--darker-bg);
+        }
+
+        footer a {
+            color: var(--signal-green);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-brand {
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .leibnitz-name {
+                font-size: 1.8rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+                font-size: 0.85rem;
+            }
+
+            .hero {
+                margin-top: 140px;
+            }
+            .hero-content {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-text h1 {
+                font-size: 2.8rem;
+            }
+
+            .specs-container {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header-brand">
+        <div class="header-left">
+            <div>
+                <h1 class="leibnitz-name">Leibnitz</h1>
+                <p class="company-tag">Signal Processing</p>
+            </div>
+        </div>
+        <nav class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#specs">Specs</a>
+            <a href="#pricing">Pricing</a>
+            {% if session.get('user') %}
+                <a href="/dashboard" style="color:var(--signal-blue);">Dashboard</a>
+                <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login" style="color:var(--signal-green);">Login</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1>Signal Processing Suite</h1>
+                <p>Professional-grade signal processing toolkit with FFT, advanced filtering, and wavelet analysis. Engineered for precision, optimized for performance.</p>
+                <div class="cta-group">
+                    <button class="btn btn-primary" onclick="document.getElementById('upload-section').scrollIntoView({behavior:'smooth'})">Start Processing</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">Learn More</button>
+                </div>
+            </div>
+            <div class="signal-canvas-container">
+                <canvas id="heroSignal" class="signal-canvas"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section class="upload-section" id="upload-section">
+        <div class="upload-container">
+            <h2 style="text-align:center; margin-bottom:2rem; color:var(--signal-green);">Upload Your Signal</h2>
+            
+            <div class="drop-zone" id="dropZone">
+                <h3>Drop your signal file here</h3>
+                <p style="color:var(--text-secondary); margin:1rem 0;">Supported formats: .csv, .txt, .npy, .wav</p>
+                <input type="file" id="fileInput" style="display:none;" accept=".csv,.txt,.npy,.wav">
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); document.getElementById('fileInput').click();">Browse Files</button>
+            </div>
+
+            <div id="fileInfo" style="margin-top:1.5rem; text-align:center; display:none;"></div>
+
+            <div class="operation-btns" style="text-align:center; margin:2.5rem 0; display:none;" id="operationBtns">
+                <button class="btn btn-primary" onclick="processSignal('fft')">FFT Analysis</button>
+                <button class="btn btn-primary" onclick="processSignal('filter')">Apply Low-Pass Filter</button>
+                <button class="btn btn-primary" onclick="processSignal('wavelet')">Wavelet Transform</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section" id="resultsSection">
+        <div class="upload-container">
+            <h2 style="color:var(--signal-green); margin-bottom:1.5rem; text-align:center;">Processing Results</h2>
+            <div id="resultContent"></div>
+            
+            <div style="text-align:center; margin-top:3rem;">
+                <button class="btn btn-secondary" onclick="resetUpload()">Process Another Signal</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="features-container">
+            <h2 class="section-title">Core Features</h2>
+            <p class="section-subtitle">Advanced signal analysis and processing capabilities</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>FFT Implementation</h3>
+                    <p>High-performance Fast Fourier Transform for real-time frequency domain analysis with optimized algorithms.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>IIR/FIR Filters</h3>
+                    <p>Infinite and Finite Impulse Response filters with customizable parameters for precision signal conditioning.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">〰️</div>
+                    <h3>Wavelet Transform</h3>
+                    <p>Advanced wavelet analysis for time-frequency decomposition and multi-scale signal processing.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3>Real-time Processing</h3>
+                    <p>Stream processing capabilities with minimal latency for live signal analysis and monitoring.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Specs Section -->
+    <section class="specs" id="specs">
+        <div class="specs-container">
+            <div>
+                <h2 class="section-title" style="text-align: left; margin-bottom: 2rem;">Technical Specifications</h2>
+                <div class="specs-list">
+                    <div class="spec-item">
+                        <span class="spec-check">✓</span>
+                        <div>
+                            <h4>Sampling Rate Support</h4>
+                            <p>Up to 1 MHz sampling frequency with full precision</p>
+                        </div>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-check">✓</span>
+                        <div>
+                            <h4>Filter Orders</h4>
+                            <p>Support for filter orders up to 512 taps</p>
+                        </div>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-check">✓</span>
+                        <div>
+                            <h4>FFT Points</h4>
+                            <p>2^4 to 2^20 point FFT transformations</p>
+                        </div>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-check">✓</span>
+                        <div>
+                            <h4>Data Formats</h4>
+                            <p>Float32, Float64, and fixed-point representations</p>
+                        </div>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-check">✓</span>
+                        <div>
+                            <h4>Multi-threaded</h4>
+                            <p>Parallel processing on multi-core systems</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="visualization-dual">
+                <div class="mini-canvas">
+                    <canvas id="fftViz"></canvas>
+                </div>
+                <div class="mini-canvas">
+                    <canvas id="filterViz"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="pricing-container">
+            <h2 class="section-title">Pricing</h2>
+            <p class="section-subtitle">One-time purchase, lifetime access</p>
+            <div class="price-box">
+                <div class="price-amount">₹499</div>
+                <div class="price-period">One-time License</div>
+                <div class="price-description">
+                    Complete Signal Processing Suite with all features, lifetime access, and free updates.
+                </div>
+                <div class="download-options">
+                    <button class="download-btn">📦 Get .py</button>
+                    <button class="download-btn">📁 Get .zip</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 Leibnitz Signal Processing Inc. | Professional Signal Analysis Tools by <a href="https://realinstitute.netlify.app" target="_blank">REAL</a></p>
+    </footer>
+
+    <script>
+        // Canvas utilities
+        function drawGrid(ctx, width, height, spacing = 20) {
+            ctx.strokeStyle = 'rgba(100, 150, 200, 0.1)';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x < width; x += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < height; y += spacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+
+        // Main Hero Signal Visualization
+        function initHeroSignal() {
+            const canvas = document.getElementById('heroSignal');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            let time = 0;
+
+            function animate() {
+                ctx.fillStyle = 'rgba(5, 8, 18, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw grid
+                drawGrid(ctx, canvas.width, canvas.height, 30);
+
+                // Draw axis lines
+                ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 2);
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+
+                const centerY = canvas.height / 2;
+                const amplitude = canvas.height / 3;
+                const frequency = 0.02;
+
+                // Draw main signal (green)
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x++) {
+                    const y = centerY - amplitude * Math.sin((x * frequency + time) * 0.1) * Math.cos((x * frequency + time) * 0.05);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Draw secondary signal (blue with phase shift)
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.7;
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x++) {
+                    const y = centerY - (amplitude * 0.6) * Math.sin((x * frequency + time) * 0.1 + Math.PI / 3);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                // Draw data points
+                ctx.fillStyle = '#ff3344';
+                for (let x = 0; x < canvas.width; x += 40) {
+                    const y = centerY - amplitude * Math.sin((x * frequency + time) * 0.1) * Math.cos((x * frequency + time) * 0.05);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                time += 1;
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        // FFT Visualization
+        function initFFTViz() {
+            const canvas = document.getElementById('fftViz');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            let time = 0;
+
+            function animate() {
+                ctx.fillStyle = 'rgba(5, 8, 18, 0.4)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = canvas.width / 32;
+                const centerY = canvas.height - 20;
+
+                for (let i = 0; i < 32; i++) {
+                    const freq = i / 32;
+                    const height = canvas.height * 0.7 * Math.abs(Math.sin(freq * 5 + time * 0.05)) * (1 - freq * 0.5);
+                    
+                    ctx.fillStyle = i % 3 === 0 ? '#ff3344' : '#00ff88';
+                    ctx.fillRect(i * barWidth + 2, centerY - height, barWidth - 4, height);
+                }
+
+                time++;
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        // Filter Response Visualization
+        function initFilterViz() {
+            const canvas = document.getElementById('filterViz');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            drawGrid(ctx, canvas.width, canvas.height, 25);
+
+            // Draw axis
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+
+            // Draw filter response
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            
+            for (let x = 0; x < canvas.width; x++) {
+                const freq = (x / canvas.width) * 5;
+                const response = Math.exp(-(freq - 1.5) * (freq - 1.5) / 0.5) + 0.2 * Math.sin(freq * 3);
+                const y = canvas.height / 2 - response * canvas.height * 0.35;
+                
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw passband indicator
+            ctx.fillStyle = 'rgba(0, 255, 136, 0.1)';
+            ctx.fillRect(canvas.width * 0.2, 0, canvas.width * 0.6, canvas.height);
+        }
+
+        // File Upload Handling
+        let currentFilename = null;
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const operationBtns = document.getElementById('operationBtns');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.style.background = 'rgba(0, 255, 136, 0.1)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = '';
+        });
+
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.style.background = '';
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFileSelect(e) {
+            handleFile(e.target.files[0]);
+        }
+
+        function handleFile(file) {
+            if (!file) return;
+            fileInfo.innerHTML = `<strong>${file.name}</strong> (${(file.size/1024).toFixed(1)} KB)`;
+            fileInfo.style.display = 'block';
+            operationBtns.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    alert("Please sign in first to upload and process signals.");
+                    window.location.href = "/login";
+                    throw new Error("Unauthorized");
+                }
+                if (res.status === 402) {
+                    alert("Usage limit reached. Redirecting to payment page...");
+                    window.location.href = "/payment";
+                    throw new Error("Payment Required");
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    currentFilename = data.filename;
+                    console.log("✅ Uploaded:", currentFilename);
+                } else {
+                    alert("Upload failed: " + data.error);
+                }
+            })
+            .catch(err => console.error(err));
+        }
+
+        function processSignal(operation) {
+            if (!currentFilename) {
+                alert("Please upload a file first");
+                return;
+            }
+
+            fetch('/api/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: currentFilename,
+                    operation: operation
+                })
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    alert("Please sign in first.");
+                    window.location.href = "/login";
+                    throw new Error("Unauthorized");
+                }
+                if (res.status === 402) {
+                    alert("Usage limit reached. Redirecting to payment page...");
+                    window.location.href = "/payment";
+                    throw new Error("Payment Required");
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    alert("Processing error: " + data.error);
+                }
+            })
+            .catch(err => console.error(err));
+        }
+
+        function showResults(data) {
+            const resultsDiv = document.getElementById('resultsSection');
+            const content = document.getElementById('resultContent');
+
+            let html = `<h3 style="color:var(--signal-blue); margin-bottom: 1.5rem; text-align: center;">${data.operation.toUpperCase()} Results</h3>`;
+
+            if (data.plot_url) {
+                html += `
+                    <div class="plot-container" style="margin:2rem auto; text-align: center; max-width: 900px;">
+                        <img src="${data.plot_url}" alt="Processing Plot" style="width: 100%; height: auto;">
+                    </div>
+                `;
+            }
+
+            html += `<pre style="background:#050812; padding:1.5rem; border-radius:0.5rem; overflow:auto; border: 1px solid var(--border-color); font-family: monospace; color: var(--signal-green); text-align: left; max-width: 900px; margin: 0 auto;">${JSON.stringify(data.result, null, 2)}</pre>`;
+
+            content.innerHTML = html;
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetUpload() {
+            document.getElementById('resultsSection').style.display = 'none';
+            fileInfo.style.display = 'none';
+            operationBtns.style.display = 'none';
+            currentFilename = null;
+            document.getElementById('fileInput').value = '';
+        }
+
+        // Initialize animations when page loads and check URL for redirected files
+        window.addEventListener('load', () => {
+            initHeroSignal();
+            initFFTViz();
+            initFilterViz();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileParam = urlParams.get('file');
+            const nameParam = urlParams.get('name');
+            const sizeParam = urlParams.get('size');
+
+            if (fileParam && nameParam) {
+                currentFilename = fileParam;
+                
+                // Show file info
+                const sizeKb = sizeParam ? (parseFloat(sizeParam)/1024).toFixed(1) : "unknown";
+                fileInfo.innerHTML = `<strong>${nameParam}</strong> (${sizeKb} KB) <span style="color: var(--signal-blue); font-size: 0.9rem; margin-left: 0.5rem;">[Uploaded from Dashboard]</span>`;
+                fileInfo.style.display = 'block';
+                operationBtns.style.display = 'block';
+
+                // Scroll to the upload section smoothly
+                setTimeout(() => {
+                    document.getElementById('upload-section').scrollIntoView({ behavior: 'smooth' });
+                }, 400);
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const heroCanvas = document.getElementById('heroSignal');
+            if (heroCanvas) {
+                heroCanvas.width = heroCanvas.offsetWidth;
+                heroCanvas.height = heroCanvas.offsetHeight;
+            }
+        });
+    </script>
+</body>
+</html>
