@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 # Import Signal Processing Suite
@@ -19,6 +19,7 @@ from SignalProcessingSuite import magnitude_spectrum, filter_signal, dwt
 
 app = Flask(__name__)
 app.secret_key = 'leibnitz-super-secret-key-2026'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -34,7 +35,8 @@ os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
 # Demo user and database setup
 DEMO_USER = {"username": "demo", "password": "demo123"}
-USERS_FILE = 'users.json'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+USERS_FILE = os.path.join(BASE_DIR, 'users.json')
 
 def load_users():
     if not os.path.exists(USERS_FILE):
@@ -95,14 +97,19 @@ def login():
                 
             users[username_val] = password
             save_users(users)
-            flash('Registration successful! Please login.', 'success')
-            return render_template('login.html', active_tab='login', username=username_val)
+            
+            # Autologin and set permanent session
+            session.permanent = True
+            session['user'] = username_val
+            flash('Registration successful! Welcome to Leibnitz.', 'success')
+            return redirect(url_for('dashboard'))
             
         else:  # action == 'login'
             password = request.form.get('password')
             users = load_users()
             
             if username_val in users and users[username_val] == password:
+                session.permanent = True
                 session['user'] = username_val
                 flash('Login successful!', 'success')
                 return redirect(url_for('dashboard'))
