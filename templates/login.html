@@ -134,11 +134,71 @@
             box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
         }
 
-        .error {
-            color: #ff3344;
+        .message {
             text-align: center;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             font-size: 0.95rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid transparent;
+        }
+
+        .message.error {
+            color: #ff3344;
+            background: rgba(255, 51, 68, 0.1);
+            border-color: rgba(255, 51, 68, 0.2);
+        }
+
+        .message.success {
+            color: var(--signal-green);
+            background: rgba(0, 255, 136, 0.1);
+            border-color: rgba(0, 255, 136, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(5, 8, 18, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.25rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 0.35rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--signal-green) 0%, var(--signal-blue) 100%);
+            color: #050812;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.2);
+        }
+
+        .auth-form {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .auth-form.active {
+            display: block;
+            opacity: 1;
         }
 
         .guest-link {
@@ -164,25 +224,53 @@
             <p class="tagline">Signal Processing Suite</p>
         </div>
 
-        <h2>Sign In</h2>
+        <div class="tabs">
+            <button id="tab-register" class="tab-btn {% if active_tab == 'register' %}active{% endif %}" onclick="switchTab('register')">Register</button>
+            <button id="tab-login" class="tab-btn {% if active_tab == 'login' %}active{% endif %}" onclick="switchTab('login')">Sign In</button>
+        </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="error">{{ message }}</div>
+                    <div class="message {{ category }}">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <form method="POST">
+        <!-- Registration Form -->
+        <form id="form-register" method="POST" class="auth-form {% if active_tab == 'register' %}active{% endif %}" style="{% if active_tab == 'register' %}display: block; opacity: 1;{% else %}display: none; opacity: 0;{% endif %}">
+            <input type="hidden" name="action" value="register">
+            
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
+                <label for="reg-username">Username</label>
+                <input type="text" id="reg-username" name="username" value="{% if active_tab == 'register' %}{{ username or '' }}{% endif %}" required autocomplete="username">
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password">
+                <label for="reg-password">Password</label>
+                <input type="password" id="reg-password" name="password" required autocomplete="new-password">
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn-login">REGISTER</button>
+        </form>
+
+        <!-- Login Form -->
+        <form id="form-login" method="POST" class="auth-form {% if active_tab == 'login' %}active{% endif %}" style="{% if active_tab == 'login' %}display: block; opacity: 1;{% else %}display: none; opacity: 0;{% endif %}">
+            <input type="hidden" name="action" value="login">
+            
+            <div class="form-group">
+                <label for="login-username">Username</label>
+                <input type="text" id="login-username" name="username" value="{% if active_tab == 'login' %}{{ username or '' }}{% endif %}" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" name="password" required autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn-login">LOGIN</button>
@@ -193,5 +281,28 @@
             <a href="/">← Back to Homepage</a>
         </div>
     </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Update tab button active states
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            // Hide and reset all forms
+            document.querySelectorAll('.auth-form').forEach(form => {
+                form.classList.remove('active');
+                form.style.display = 'none';
+                form.style.opacity = '0';
+            });
+
+            // Show and fade in the selected form
+            const activeForm = document.getElementById('form-' + tabName);
+            activeForm.style.display = 'block';
+            setTimeout(() => {
+                activeForm.style.opacity = '1';
+                activeForm.classList.add('active');
+            }, 50);
+        }
+    </script>
 </body>
 </html>

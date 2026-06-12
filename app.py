@@ -32,8 +32,28 @@ app.config['PROCESSED_FOLDER'] = PROCESSED_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
-# Demo user
+# Demo user and database setup
 DEMO_USER = {"username": "demo", "password": "demo123"}
+USERS_FILE = 'users.json'
+
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        users = {DEMO_USER['username']: DEMO_USER['password']}
+        save_users(users)
+        return users
+    try:
+        with open(USERS_FILE, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading users: {e}")
+        return {DEMO_USER['username']: DEMO_USER['password']}
+
+def save_users(users):
+    try:
+        with open(USERS_FILE, 'w') as f:
+            json.dump(users, f, indent=4)
+    except Exception as e:
+        print(f"Error saving users: {e}")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -46,17 +66,52 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
         
-        if username == DEMO_USER['username'] and password == DEMO_USER['password']:
-            session['user'] = username
-            flash('Login successful!', 'success')
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid credentials', 'error')
-    return render_template('login.html')
+    active_tab = 'register'
+    username_val = ''
+    
+    if request.method == 'POST':
+        action = request.form.get('action', 'login')
+        username_val = request.form.get('username', '').strip()
+        
+        if action == 'register':
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+            
+            if not username_val or not password:
+                flash('Username and password are required.', 'error')
+                return render_template('login.html', active_tab='register', username=username_val)
+                
+            if password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return render_template('login.html', active_tab='register', username=username_val)
+                
+            users = load_users()
+            if username_val in users:
+                flash('Username already exists.', 'error')
+                return render_template('login.html', active_tab='register', username=username_val)
+                
+            users[username_val] = password
+            save_users(users)
+            flash('Registration successful! Please login.', 'success')
+            return render_template('login.html', active_tab='login', username=username_val)
+            
+        else:  # action == 'login'
+            password = request.form.get('password')
+            users = load_users()
+            
+            if username_val in users and users[username_val] == password:
+                session['user'] = username_val
+                flash('Login successful!', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Invalid credentials.', 'error')
+                return render_template('login.html', active_tab='login', username=username_val)
+                
+    return render_template('login.html', active_tab=active_tab, username=username_val)
+
 
 @app.route('/logout')
 def logout():
