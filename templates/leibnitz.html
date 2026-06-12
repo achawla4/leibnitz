@@ -572,6 +572,28 @@
                 flex-direction: column;
             }
         }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(15, 21, 53, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+
+        .copy-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--signal-green);
+            background: rgba(0, 255, 136, 0.1);
+            transform: scale(1.08);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -1034,11 +1056,40 @@
                 `;
             }
 
-            html += `<pre style="background:#050812; padding:1.5rem; border-radius:0.5rem; overflow:auto; border: 1px solid var(--border-color); font-family: monospace; color: var(--signal-green); text-align: left; max-width: 900px; margin: 0 auto;">${JSON.stringify(data.result, null, 2)}</pre>`;
+            html += `
+                <div class="data-dump-container" style="position: relative; max-width: 900px; margin: 0 auto;">
+                    <button class="copy-btn" onclick="copyDataDump(this)" title="Copy to Clipboard">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: middle;">
+                          <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/>
+                        </svg>
+                    </button>
+                    <pre style="background:#050812; padding:1.5rem; border-radius:0.5rem; overflow:auto; border: 1px solid var(--border-color); font-family: monospace; color: var(--signal-green); text-align: left; margin: 0;">${JSON.stringify(data.result, null, 2)}</pre>
+                </div>
+            `;
 
             content.innerHTML = html;
             resultsDiv.style.display = 'block';
             resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copyDataDump(btn) {
+            const preElement = btn.nextElementSibling;
+            const text = preElement.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="var(--signal-green)" viewBox="0 0 16 16" style="vertical-align: middle;">
+                      <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                    </svg>
+                `;
+                btn.style.borderColor = 'var(--signal-green)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.borderColor = '';
+                }, 2000);
+            }).catch(err => {
+                console.error("Failed to copy text: ", err);
+            });
         }
 
         function resetUpload() {
