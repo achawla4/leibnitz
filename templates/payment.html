@@ -458,7 +458,7 @@
         </div>
 
         <div class="back-link">
-            <a href="/dashboard">← Back to Dashboard</a>
+            <a href="/dashboard" onclick="return backToDashboardWithUTR()">← Back to Dashboard</a>
         </div>
     </div>
 
@@ -490,10 +490,45 @@
                 alert("Please enter a valid 12-digit numeric UTR/Reference number.");
                 return;
             }
-            startPayment(`UPI (UTR: ${utr})`);
+            startPayment(`UPI (UTR: ${utr})`, utr);
         }
 
-        function startPayment(method) {
+        function backToDashboardWithUTR() {
+            const utrInput = document.getElementById('utr-number');
+            const utr = utrInput ? utrInput.value.trim() : '';
+
+            if (!utr) {
+                return true;
+            }
+
+            if (!/^\d{12}$/.test(utr)) {
+                alert("Please enter a valid 12-digit numeric UTR/Reference number.");
+                return false;
+            }
+
+            fetch('/api/payment/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ utr })
+            })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.success) {
+                    window.location.href = '/dashboard';
+                } else {
+                    alert(data.error || "Payment verification failed. Please retry.");
+                }
+            })
+            .catch(() => {
+                alert("Network Error. Please try again.");
+            });
+
+            return false;
+        }
+
+        function startPayment(method, utr = '') {
             const overlay = document.getElementById('loader-overlay');
             const statusText = document.getElementById('loader-status');
 
@@ -510,7 +545,8 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
-                        }
+                        },
+                        body: JSON.stringify({ utr })
                     })
                     .then(res => res.json())
                     .then(data => {

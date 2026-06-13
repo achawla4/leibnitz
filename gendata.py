@@ -9,7 +9,7 @@ import numpy as np
 import csv
 
 # Parameters
-f = 10            # frequency in Hz
+f = 12            # frequency in Hz
 Fs = 1000         # sampling frequency in Hz
 T = 1             # duration in seconds
 t = np.linspace(0, T, int(Fs*T), endpoint=False)
@@ -18,10 +18,10 @@ t = np.linspace(0, T, int(Fs*T), endpoint=False)
 signal = np.sin(2 * np.pi * f * t)
 
 # Save to CSV
-with open("sinusoidal_10Hz.csv", "w", newline="") as file:
+with open("sinusoidal_12Hz.csv", "w", newline="") as file:
     writer = csv.writer(file)
     writer.writerow(["Time (s)", "Signal"])
     for ti, si in zip(t, signal):
         writer.writerow([ti, si])
 
-print("CSV file 'sinusoidal_10Hz.csv' generated successfully.")
+print("CSV file 'sinusoidal_12Hz.csv' generated successfully.")

@@ -13,6 +13,7 @@ from scipy import signal
 import uuid
 from datetime import datetime, timedelta
 import json
+import re
 
 # Import Signal Processing Suite
 from SignalProcessingSuite import magnitude_spectrum, filter_signal, dwt
@@ -82,9 +83,13 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL
+                password VARCHAR(255) NOT NULL,
+                is_paid BOOLEAN NOT NULL DEFAULT FALSE,
+                payment_utr VARCHAR(32)
             );
         """)
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_paid BOOLEAN NOT NULL DEFAULT FALSE;")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_utr VARCHAR(32);")
         # Insert demo user if not exists
         cur.execute("SELECT 1 FROM users WHERE username = 'demo';")
         if not cur.fetchone():
@@ -118,7 +123,10 @@ def get_user_password(username):
     
     # JSON fallback
     users = load_users()
-    return users.get(username)
+    user_record = users.get(username)
+    if isinstance(user_record, dict):
+        return user_record.get('password')
+    return user_record
 
 def add_user(username, password):
     if DATABASE_URL:
@@ -136,9 +144,69 @@ def add_user(username, password):
             
     # JSON fallback
     users = load_users()
-    users[username] = password
+    users[username] = {
+        "password": password,
+        "is_paid": False,
+        "payment_utr": None
+    }
     save_users(users)
     return True
+
+def is_paid_user(username):
+    if DATABASE_URL:
+        import psycopg2
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cur = conn.cursor()
+            cur.execute("SELECT is_paid FROM users WHERE username = %s;", (username,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            return bool(row[0]) if row else False
+        except Exception as e:
+            print(f"Database error in is_paid_user: {e}. Falling back to JSON.")
+
+    users = load_users()
+    user_record = users.get(username)
+    if isinstance(user_record, dict):
+        return bool(user_record.get('is_paid', False))
+    return False
+
+def mark_user_paid(username, utr=None):
+    if DATABASE_URL:
+        import psycopg2
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE users SET is_paid = TRUE, payment_utr = COALESCE(%s, payment_utr) WHERE username = %s;",
+                (utr, username)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Database error in mark_user_paid: {e}. Falling back to JSON.")
+
+    users = load_users()
+    user_record = users.get(username)
+    if isinstance(user_record, dict):
+        user_record['is_paid'] = True
+        if utr:
+            user_record['payment_utr'] = utr
+    else:
+        user_record = {
+            "password": user_record,
+            "is_paid": True,
+            "payment_utr": utr
+        }
+    users[username] = user_record
+    save_users(users)
+    return True
+
+def has_unlimited_access():
+    return bool(session.get('is_paid')) or is_paid_user(session.get('user'))
 
 def get_wav_sample_rate(filepath):
     import wave
@@ -220,6 +288,7 @@ def login():
             # Autologin and set permanent session
             session.permanent = True
             session['user'] = username_val
+            session['is_paid'] = False
             flash('Registration successful! Welcome to Leibnitz.', 'success')
             return redirect(url_for('dashboard'))
             
@@ -230,6 +299,7 @@ def login():
             if db_password and db_password == password:
                 session.permanent = True
                 session['user'] = username_val
+                session['is_paid'] = is_paid_user(username_val)
                 flash('Login successful!', 'success')
                 return redirect(url_for('dashboard'))
             else:
@@ -242,6 +312,7 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('user', None)
+    session.pop('is_paid', None)
     return redirect(url_for('index'))
 
 @app.route('/dashboard')
@@ -264,17 +335,26 @@ def get_usage():
         return jsonify({"error": "Unauthorized"}), 401
     return jsonify({
         "usage_count": session.get('usage_count', 0),
-        "limit": 5
+        "limit": None if has_unlimited_access() else 5,
+        "unlimited_access": has_unlimited_access()
     })
 
 @app.route('/api/payment/confirm', methods=['POST'])
 def confirm_payment():
     if 'user' not in session:
         return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    utr = str(data.get('utr', '')).strip()
+    if utr and not re.fullmatch(r'\d{12}', utr):
+        return jsonify({"error": "Invalid UTR number"}), 400
+
+    mark_user_paid(session['user'], utr or None)
+    session['is_paid'] = True
     session['usage_count'] = 0
     return jsonify({
         "success": True,
-        "message": "Payment confirmed! Free usage limit reset."
+        "unlimited_access": True,
+        "message": "Payment confirmed! Unlimited access unlocked."
     })
 
 @app.route('/api/upload', methods=['POST'])
@@ -282,7 +362,7 @@ def upload_file():
     if 'user' not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
-    if session.get('usage_count', 0) >= 5:
+    if not has_unlimited_access() and session.get('usage_count', 0) >= 5:
         return jsonify({"error": "Usage limit reached", "redirect": "/payment"}), 402
 
     if 'file' not in request.files:
@@ -303,7 +383,8 @@ def upload_file():
         elif filename.lower().endswith('.csv'):
             detected_rate = detect_csv_properties(filepath)
             
-        session['usage_count'] = session.get('usage_count', 0) + 1
+        if not has_unlimited_access():
+            session['usage_count'] = session.get('usage_count', 0) + 1
         return jsonify({
             "success": True,
             "filename": filename,
@@ -319,7 +400,7 @@ def process_signal():
     if 'user' not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
-    if session.get('usage_count', 0) >= 5:
+    if not has_unlimited_access() and session.get('usage_count', 0) >= 5:
         return jsonify({"error": "Usage limit reached", "redirect": "/payment"}), 402
 
     data = request.get_json()
@@ -483,8 +564,9 @@ def process_signal():
             }
             plot_path = generate_suite_plot(filename, 'wavelet', signal_data, result_data_for_plot, sample_rate=sample_rate)
 
-        # Increment usage count
-        session['usage_count'] = session.get('usage_count', 0) + 1
+        # Increment usage count only for users still on the free tier.
+        if not has_unlimited_access():
+            session['usage_count'] = session.get('usage_count', 0) + 1
 
         output_id = str(uuid.uuid4())
         return jsonify({
