@@ -16,7 +16,7 @@ import json
 import re
 
 # Import Signal Processing Suite
-from SignalProcessingSuite import magnitude_spectrum, filter_signal, dwt
+from SignalProcessingSuite.blocks import get_block, list_blocks, timed_run
 
 app = Flask(__name__)
 app.secret_key = 'leibnitz-super-secret-key-2026'
@@ -249,6 +249,91 @@ def detect_csv_properties(filepath):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def load_signal_file(filepath, filename):
+    detected_rate = None
+
+    if filename.lower().endswith('.wav'):
+        from scipy.io import wavfile
+        sample_rate_wav, signal_data = wavfile.read(filepath)
+        detected_rate = float(sample_rate_wav)
+
+        # Ensure 1D (mono)
+        if len(signal_data.shape) > 1:
+            signal_data = signal_data[:, 0]
+
+        # Normalize to [-1.0, 1.0] if integer type
+        if signal_data.dtype.kind in 'iu':
+            max_val = np.iinfo(signal_data.dtype).max
+            signal_data = signal_data.astype(np.float32) / max_val
+
+    elif filename.lower().endswith('.npy'):
+        signal_data = np.load(filepath)
+
+    elif filename.lower().endswith('.csv'):
+        # Load with delimiter
+        signal_data = np.loadtxt(filepath, delimiter=',', skiprows=1)
+        # Detect rate and extract signal column if 2D
+        if len(signal_data.shape) > 1 and signal_data.shape[1] > 1:
+            col0 = signal_data[:, 0]
+            diffs = np.diff(col0)
+            if len(diffs) > 0 and np.all(diffs > 0) and np.std(diffs) < 1e-3 * np.mean(diffs):
+                mean_diff = np.mean(diffs)
+                if mean_diff > 0:
+                    detected_rate = float(round(1.0 / mean_diff, 2))
+                # Column 0 is time, Column 1 is signal
+                signal_data = signal_data[:, 1]
+            else:
+                signal_data = signal_data[:, 0]
+        else:
+            signal_data = signal_data.flatten()
+
+    else:  # txt or others
+        signal_data = np.loadtxt(filepath)
+        if len(signal_data.shape) > 1:
+            signal_data = signal_data[:, 0] if signal_data.shape[1] > 1 else signal_data.flatten()
+
+    return np.asarray(signal_data, dtype=float).flatten(), detected_rate
+
+def get_request_sample_rate(data, detected_rate):
+    sample_rate = detected_rate if detected_rate is not None else 1000.0
+    user_rate = data.get('sample_rate')
+    if user_rate is not None:
+        try:
+            val = float(user_rate)
+            if val > 0:
+                sample_rate = val
+        except (ValueError, TypeError):
+            pass
+    return sample_rate
+
+def normalize_block_specs(data):
+    blocks = data.get('blocks')
+    if blocks is not None:
+        if not isinstance(blocks, list) or not blocks:
+            raise ValueError("blocks must be a non-empty list")
+        normalized = []
+        for index, spec in enumerate(blocks):
+            if not isinstance(spec, dict):
+                raise ValueError(f"blocks[{index}] must be an object")
+            block_id = spec.get('id') or spec.get('operation')
+            if not block_id:
+                raise ValueError(f"blocks[{index}] is missing id")
+            normalized.append({
+                "id": block_id,
+                "params": spec.get('params') or {}
+            })
+        return normalized
+
+    operation = data.get('operation')
+    if not operation:
+        raise ValueError("Missing operation or blocks")
+    legacy_params = {
+        key: value
+        for key, value in data.items()
+        if key not in {'filename', 'operation', 'sample_rate'}
+    }
+    return [{"id": operation, "params": legacy_params}]
+
 # ====================== ROUTES ======================
 
 @app.route('/')
@@ -357,6 +442,10 @@ def confirm_payment():
         "message": "Payment confirmed! Unlimited access unlocked."
     })
 
+@app.route('/api/blocks', methods=['GET'])
+def available_blocks():
+    return jsonify({"blocks": list_blocks()})
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'user' not in session:
@@ -403,11 +492,10 @@ def process_signal():
     if not has_unlimited_access() and session.get('usage_count', 0) >= 5:
         return jsonify({"error": "Usage limit reached", "redirect": "/payment"}), 402
 
-    data = request.get_json()
+    data = request.get_json() or {}
     filename = data.get('filename')
-    operation = data.get('operation')
 
-    if not filename or not operation:
+    if not filename:
         return jsonify({"error": "Missing parameters"}), 400
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -415,154 +503,38 @@ def process_signal():
         return jsonify({"error": "File not found"}), 404
 
     try:
-        # Load signal data and auto-detect rate if possible
-        detected_rate = None
-        
-        if filename.lower().endswith('.wav'):
-            from scipy.io import wavfile
-            sample_rate_wav, signal_data = wavfile.read(filepath)
-            detected_rate = float(sample_rate_wav)
-            
-            # Ensure 1D (mono)
-            if len(signal_data.shape) > 1:
-                signal_data = signal_data[:, 0]
-                
-            # Normalize to [-1.0, 1.0] if integer type
-            if signal_data.dtype.kind in 'iu':
-                max_val = np.iinfo(signal_data.dtype).max
-                signal_data = signal_data.astype(np.float32) / max_val
-                
-        elif filename.lower().endswith('.npy'):
-            signal_data = np.load(filepath)
-            
-        elif filename.lower().endswith('.csv'):
-            # Load with delimiter
-            signal_data = np.loadtxt(filepath, delimiter=',', skiprows=1)
-            # Detect rate and extract signal column if 2D
-            if len(signal_data.shape) > 1 and signal_data.shape[1] > 1:
-                col0 = signal_data[:, 0]
-                diffs = np.diff(col0)
-                if len(diffs) > 0 and np.all(diffs > 0) and np.std(diffs) < 1e-3 * np.mean(diffs):
-                    mean_diff = np.mean(diffs)
-                    if mean_diff > 0:
-                        detected_rate = float(round(1.0 / mean_diff, 2))
-                    # Column 0 is time, Column 1 is signal
-                    signal_data = signal_data[:, 1]
-                else:
-                    signal_data = signal_data[:, 0]
-            else:
-                signal_data = signal_data.flatten()
-                
-        else:  # txt or others
-            signal_data = np.loadtxt(filepath)
-            if len(signal_data.shape) > 1:
-                signal_data = signal_data[:, 0] if signal_data.shape[1] > 1 else signal_data.flatten()
+        signal_data, detected_rate = load_signal_file(filepath, filename)
+        sample_rate = get_request_sample_rate(data, detected_rate)
+        block_specs = normalize_block_specs(data)
 
-        # Parse user parameters
-        # 1. Sample Rate
-        sample_rate = 1000.0
-        if detected_rate is not None:
-            sample_rate = detected_rate
-        
-        user_rate = data.get('sample_rate')
-        if user_rate is not None:
-            try:
-                val = float(user_rate)
-                if val > 0:
-                    sample_rate = val
-            except (ValueError, TypeError):
-                pass
+        current_signal = signal_data
+        pipeline_results = []
 
-        result = {}
-        plot_path = None
-        result_data_for_plot = {}
+        for index, spec in enumerate(block_specs):
+            block = get_block(spec["id"])
+            params = spec.get("params") or {}
+            block_input = current_signal
+            run_result, elapsed_ms = timed_run(block, block_input, sample_rate, params)
+            plot_path = generate_suite_plot(filename, block.id, block_input, run_result.plot_data, sample_rate=sample_rate)
 
-        if operation == 'fft':
-            # Parse window option
-            window_type = data.get('fft_window', 'none')
-            if window_type == 'none' or not window_type:
-                window_type = None
-                
-            # Use SignalProcessingSuite to compute magnitude spectrum
-            xf, magnitude = magnitude_spectrum(signal_data, sample_rate=sample_rate, window=window_type)
-            
-            result = {
-                "frequencies": xf.tolist()[:500],
-                "magnitude": magnitude.tolist()[:500]
-            }
-            # Generate plot
-            plot_path = generate_suite_plot(filename, 'fft', signal_data, result, sample_rate=sample_rate)
+            pipeline_results.append({
+                "index": index,
+                "id": block.id,
+                "name": block.name,
+                "category": block.category,
+                "params": params,
+                "result": run_result.result,
+                "metadata": run_result.metadata,
+                "warnings": run_result.warnings,
+                "elapsed_ms": round(elapsed_ms, 3),
+                "plot_url": f"/processed/{plot_path}" if plot_path else None,
+            })
 
-        elif operation == 'filter':
-            # Parse filter kind, method, order, and cutoff
-            filter_kind = data.get('filter_kind', 'lowpass')
-            filter_method = data.get('filter_method', 'butter')
-            try:
-                filter_order = int(data.get('filter_order', 4))
-            except (ValueError, TypeError):
-                filter_order = 4
-                
-            raw_cutoff = data.get('filter_cutoff')
-            if filter_kind in ('bandpass', 'bandstop'):
-                if isinstance(raw_cutoff, list) and len(raw_cutoff) == 2:
-                    cutoff = (float(raw_cutoff[0]), float(raw_cutoff[1]))
-                elif isinstance(raw_cutoff, str) and ',' in raw_cutoff:
-                    parts = raw_cutoff.split(',')
-                    cutoff = (float(parts[0].strip()), float(parts[1].strip()))
-                else:
-                    nyquist = sample_rate / 2.0
-                    cutoff = (0.1 * nyquist, 0.5 * nyquist)
-            else:
-                try:
-                    cutoff = float(raw_cutoff) if raw_cutoff is not None else 100.0
-                except (ValueError, TypeError):
-                    cutoff = 100.0
+            if run_result.output_signal is not None:
+                current_signal = np.asarray(run_result.output_signal, dtype=float).flatten()
 
-            # Design and apply filter using SignalProcessingSuite
-            filtered = filter_signal(
-                signal_data,
-                sample_rate=sample_rate,
-                cutoff=cutoff,
-                kind=filter_kind,
-                method=filter_method,
-                order=filter_order
-            )
-
-            result = {"filtered": filtered.tolist()[:1000]}
-            result_data_for_plot = {'filtered': filtered}
-            plot_path = generate_suite_plot(filename, 'filter', signal_data, result_data_for_plot, sample_rate=sample_rate)
-
-        elif operation == 'wavelet':
-            wavelet_type = data.get('wavelet_type', 'db4')
-            try:
-                wavelet_levels = data.get('wavelet_levels')
-                wavelet_levels = int(wavelet_levels) if wavelet_levels is not None else 3
-            except (ValueError, TypeError):
-                wavelet_levels = 3
-                
-            # Perform multilevel Haar/DWT from SignalProcessingSuite
-            coeffs = dwt(signal_data, wavelet=wavelet_type, levels=wavelet_levels)
-            
-            # Save raw objects for plotting
-            result_data_for_plot = {'_coeffs_obj': coeffs}
-            
-            # Serialize summary stats
-            result = {
-                "wavelet": wavelet_type,
-                "levels": len(coeffs) - 1,
-                "coefficients_summary": [
-                    {
-                        "band": "Approximation" if i == 0 else f"Detail Level {len(coeffs) - i}",
-                        "size": len(c),
-                        "mean": float(np.mean(c)),
-                        "std": float(np.std(c)),
-                        "max": float(np.max(c)),
-                        "min": float(np.min(c))
-                    }
-                    for i, c in enumerate(coeffs)
-                ]
-            }
-            plot_path = generate_suite_plot(filename, 'wavelet', signal_data, result_data_for_plot, sample_rate=sample_rate)
+        first_result = pipeline_results[0] if pipeline_results else {}
+        last_result = pipeline_results[-1] if pipeline_results else {}
 
         # Increment usage count only for users still on the free tier.
         if not has_unlimited_access():
@@ -571,9 +543,11 @@ def process_signal():
         output_id = str(uuid.uuid4())
         return jsonify({
             "success": True,
-            "operation": operation,
-            "result": result,
-            "plot_url": f"/processed/{plot_path}" if plot_path else None,
+            "operation": first_result.get("id"),
+            "result": last_result.get("result"),
+            "plot_url": last_result.get("plot_url"),
+            "pipeline": pipeline_results,
+            "sample_rate": sample_rate,
             "download_url": f"/api/download/{output_id}",
             "usage_count": session.get('usage_count', 0)
         })

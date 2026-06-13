@@ -1,0 +1,107 @@
+Leibnitz Development Plan: Diverse Processing Blocks for Analysis and Machine Learning
+
+Goal
+Build Leibnitz into a modular signal-processing workspace where users can upload raw data, select reusable processing blocks, chain them into workflows, inspect intermediate outputs, and export analysis-ready or machine-learning-ready datasets.
+
+1. Create a block registry and pipeline execution model
+   Feature:
+   Replace the current single-operation model with a registry of processing blocks that can be composed in sequence.
+   Implementation details:
+   - Add a new module such as SignalProcessingSuite/blocks.py with a ProcessingBlock base shape: id, name, category, input_schema, output_schema, default_params, validate(), and run().
+   - Register existing operations as blocks: fft, filter, wavelet.
+   - Add a pipeline payload to /api/process that accepts blocks: [{ "id": "filter", "params": {...} }, { "id": "fft", "params": {...} }].
+   - Return per-block outputs, summaries, plots, warnings, and timing metadata.
+   - Keep the existing single-operation API temporarily by translating operation into a one-block pipeline for backward compatibility.
+
+2. Add robust data ingestion and signal metadata detection
+   Feature:
+   Make uploads reliable for CSV, TXT, NPY, WAV, and future multi-column sensor files.
+   Implementation details:
+   - Create a loader module that returns a SignalDataset object with data, sample_rate, channel_names, time_vector, units, source_filename, and detected_metadata.
+   - Improve CSV parsing with delimiter detection, optional header detection, selectable time column, selectable signal columns, missing-value handling, and preview rows.
+   - Support multi-channel WAV and multi-column CSV instead of silently taking the first channel.
+   - Add /api/inspect-file to return columns, detected sample rate, row counts, channel counts, duration, dtype, missing values, and suggested defaults before processing.
+   - Store upload metadata in a JSON sidecar file under uploads/ or a database table when PostgreSQL is configured.
+
+3. Add preprocessing blocks for cleaning and normalization
+   Feature:
+   Provide common cleaning blocks needed before downstream analysis or ML.
+   Implementation details:
+   - Add blocks for detrending, demeaning, z-score normalization, min-max scaling, robust scaling, clipping, outlier replacement, missing-value interpolation, and baseline correction.
+   - Add resampling and anti-aliasing blocks using scipy.signal.resample_poly where possible.
+   - Add configurable smoothing blocks: moving average, Savitzky-Golay, median filter, and exponential moving average.
+   - Return before/after statistics for every preprocessing block: mean, std, min, max, RMS, missing count, and changed sample count.
+   - Add UI controls grouped under "Prepare" so users can stack cleaning steps before analysis blocks.
+
+4. Expand filtering and denoising blocks
+   Feature:
+   Make filtering broad enough for biomedical, vibration, audio, IoT, and experimental signals.
+   Implementation details:
+   - Extend existing filter_signal support with notch filters, comb filters, elliptic filters, Bessel filters, FIR window options, zero-phase toggle, and filter response previews.
+   - Add wavelet denoising as a separate block using SignalProcessingSuite.wavelet.denoise.
+   - Add frequency-domain denoising blocks for thresholding selected FFT bands.
+   - Add adaptive denoising options where applicable, such as Wiener filtering and simple LMS noise cancellation when a reference noise channel is available.
+   - For every filter block, validate cutoff values against Nyquist and return an explanatory warning instead of a raw exception.
+
+5. Add time-domain feature extraction blocks
+   Feature:
+   Generate compact features for statistical analysis, dashboards, and machine-learning tables.
+   Implementation details:
+   - Add a time_features block returning mean, median, std, variance, RMS, peak-to-peak, skewness, kurtosis, crest factor, zero-crossing rate, slope statistics, energy, entropy, and quantiles.
+   - Support whole-signal and windowed feature extraction modes.
+   - Add event-oriented features: threshold crossings, peak count, peak amplitude, inter-peak intervals, rise time, decay time, and area under curve.
+   - Return features as structured JSON and also as tabular rows suitable for CSV export.
+   - Add unit tests using synthetic sine, impulse, and noisy signals to verify known feature values.
+
+6. Add frequency and time-frequency feature blocks
+   Feature:
+   Support spectral analysis beyond basic FFT for subsequent ML and scientific analysis.
+   Implementation details:
+   - Add blocks for power spectrum, Welch PSD, spectrogram/STFT, dominant frequency, spectral centroid, bandwidth, rolloff, flatness, harmonic ratio, bandpower, and spectral entropy.
+   - Add configurable frequency bands so users can compute bandpower features for EEG-like, vibration, audio, or custom domains.
+   - Add continuous wavelet transform and scalogram outputs when PyWavelets is installed.
+   - Add mel-spectrogram and MFCC blocks if audio-oriented workflows are needed, guarded by optional dependencies.
+   - Store large matrices such as spectrograms separately as .npy or compressed .npz files and return preview slices to the UI.
+
+7. Add segmentation, windowing, and labeling workflows
+   Feature:
+   Let users split long signals into meaningful samples for ML training and repeated analysis.
+   Implementation details:
+   - Add segmentation blocks for fixed-length windows, overlapping sliding windows, event-centered windows, and label-file-driven windows.
+   - Allow users to specify window length in seconds or samples, hop length, padding policy, and minimum valid-data fraction.
+   - Add optional labels from filename patterns, uploaded label CSV files, manual UI entry, or time-range annotations.
+   - Return a segment manifest with segment_id, source file, start_time, end_time, label, channel, and applied pipeline hash.
+   - Use the existing realtime_processing.sliding_windows helper where appropriate, then standardize output into a reusable SegmentDataset structure.
+
+8. Add ML-ready dataset export blocks
+   Feature:
+   Convert processed signals and extracted features into formats useful for subsequent machine learning.
+   Implementation details:
+   - Add exports for CSV feature tables, Parquet when pyarrow is available, NumPy .npz bundles, and zipped train/validation/test splits.
+   - Include metadata files: schema.json, pipeline.json, label_map.json, feature_descriptions.json, and source_manifest.csv.
+   - Add split strategies: random split, stratified split when labels exist, group-by-file split to avoid leakage, and time-ordered split.
+   - Add scaling-fit behavior for ML: fit scalers on train only, apply to validation/test, and save scaler parameters.
+   - Implement /api/download/<output_id> so generated outputs are persisted under processed/<output_id>/ and downloadable as ZIP files.
+
+9. Add batch processing, saved workflows, and reproducibility
+   Feature:
+   Let users process many files consistently and rerun workflows later.
+   Implementation details:
+   - Add a workflow model with name, description, blocks, params, version, created_by, created_at, and checksum.
+   - Add /api/workflows endpoints to save, list, load, update, and delete workflows.
+   - Add batch upload processing where the same pipeline runs against multiple uploaded files and produces a combined feature table plus per-file artifacts.
+   - Add deterministic run IDs and pipeline hashes so outputs can be traced to exact input files and parameters.
+   - Add background job support for large batches using a simple job table first, then Celery/RQ if the workload grows.
+
+10. Add validation, visualization, and quality-control blocks
+   Feature:
+   Help users know whether outputs are trustworthy before using them for analysis or ML.
+   Implementation details:
+   - Add quality blocks for sample-rate consistency, clipping detection, flatline detection, missing-data percentage, SNR estimate, stationarity tests, and distribution drift across files.
+   - Add visualization blocks for time plot, overlay plot, histogram, box plot, FFT plot, spectrogram, scalogram, correlation heatmap, and feature-pair scatter plot.
+   - Return QC status levels: pass, warning, fail, with actionable messages.
+   - Add plot generation that works per block and per pipeline, with saved PNG previews and optional raw plot data for frontend rendering.
+   - Add tests for common failure modes: invalid cutoff, empty file, wrong sample rate, all-NaN input, non-numeric CSV, and oversized file.
+
+Suggested implementation order
+Start with steps 1, 2, and 8 because they define the architecture, reliable input handling, and useful output persistence. Then implement preprocessing and feature blocks in steps 3, 5, and 6. After that, add segmentation, batch workflows, and quality-control features so Leibnitz can support complete analysis and machine-learning preparation workflows.
