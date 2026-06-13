@@ -57,6 +57,127 @@ def save_users(users):
     except Exception as e:
         print(f"Error saving users: {e}")
 
+# PostgreSQL setup
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+# Try reading from postgreconnection.txt if DATABASE_URL is not set
+if not DATABASE_URL:
+    conn_file = os.path.join(BASE_DIR, 'postgreconnection.txt')
+    if os.path.exists(conn_file):
+        try:
+            with open(conn_file, 'r') as f:
+                DATABASE_URL = f.read().strip()
+        except Exception as e:
+            print(f"Error reading postgreconnection.txt: {e}")
+
+def init_db():
+    if not DATABASE_URL:
+        print("DATABASE_URL not set. Running in JSON mode.")
+        return
+    import psycopg2
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL
+            );
+        """)
+        # Insert demo user if not exists
+        cur.execute("SELECT 1 FROM users WHERE username = 'demo';")
+        if not cur.fetchone():
+            cur.execute("INSERT INTO users (username, password) VALUES ('demo', 'demo123');")
+            print("Default demo user inserted into PostgreSQL database.")
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("PostgreSQL database initialized successfully.")
+    except Exception as e:
+        print(f"Error initializing PostgreSQL database: {e}")
+
+# Initialize Database
+init_db()
+
+def get_user_password(username):
+    if DATABASE_URL:
+        import psycopg2
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cur = conn.cursor()
+            cur.execute("SELECT password FROM users WHERE username = %s;", (username,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            if row:
+                return row[0]
+            return None
+        except Exception as e:
+            print(f"Database error in get_user_password: {e}. Falling back to JSON.")
+    
+    # JSON fallback
+    users = load_users()
+    return users.get(username)
+
+def add_user(username, password):
+    if DATABASE_URL:
+        import psycopg2
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cur = conn.cursor()
+            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s);", (username, password))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Database error in add_user: {e}. Falling back to JSON.")
+            
+    # JSON fallback
+    users = load_users()
+    users[username] = password
+    save_users(users)
+    return True
+
+def get_wav_sample_rate(filepath):
+    import wave
+    try:
+        with wave.open(filepath, 'rb') as w:
+            return w.getframerate()
+    except Exception as e:
+        print(f"Error reading WAV header: {e}")
+        return None
+
+def detect_csv_properties(filepath):
+    try:
+        with open(filepath, 'r') as f:
+            lines = [f.readline() for _ in range(101)]
+        start_idx = 1 if any(c.isalpha() for c in lines[0]) else 0
+        data_lines = lines[start_idx:]
+        rows = []
+        for line in data_lines:
+            if not line.strip():
+                continue
+            parts = line.strip().split(',')
+            try:
+                rows.append([float(p) for p in parts])
+            except ValueError:
+                pass
+        if len(rows) < 5:
+            return None
+        data = np.array(rows)
+        if data.ndim == 2 and data.shape[1] > 1:
+            col0 = data[:, 0]
+            diffs = np.diff(col0)
+            if len(diffs) > 0 and np.all(diffs > 0) and np.std(diffs) < 1e-3 * np.mean(diffs):
+                mean_diff = np.mean(diffs)
+                if mean_diff > 0:
+                    return float(round(1.0 / mean_diff, 2))
+    except Exception as e:
+        print(f"Error detecting CSV properties: {e}")
+    return None
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -90,13 +211,11 @@ def login():
                 flash('Passwords do not match.', 'error')
                 return render_template('login.html', active_tab='register', username=username_val)
                 
-            users = load_users()
-            if username_val in users:
+            if get_user_password(username_val) is not None:
                 flash('Username already exists.', 'error')
                 return render_template('login.html', active_tab='register', username=username_val)
                 
-            users[username_val] = password
-            save_users(users)
+            add_user(username_val, password)
             
             # Autologin and set permanent session
             session.permanent = True
@@ -106,9 +225,9 @@ def login():
             
         else:  # action == 'login'
             password = request.form.get('password')
-            users = load_users()
+            db_password = get_user_password(username_val)
             
-            if username_val in users and users[username_val] == password:
+            if db_password and db_password == password:
                 session.permanent = True
                 session['user'] = username_val
                 flash('Login successful!', 'success')
@@ -178,11 +297,18 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        detected_rate = None
+        if filename.lower().endswith('.wav'):
+            detected_rate = get_wav_sample_rate(filepath)
+        elif filename.lower().endswith('.csv'):
+            detected_rate = detect_csv_properties(filepath)
+            
         session['usage_count'] = session.get('usage_count', 0) + 1
         return jsonify({
             "success": True,
             "filename": filename,
             "message": "File uploaded successfully",
+            "detected_sample_rate": detected_rate,
             "usage_count": session.get('usage_count', 0)
         })
     
@@ -208,51 +334,140 @@ def process_signal():
         return jsonify({"error": "File not found"}), 404
 
     try:
-        # Load signal data
-        if filename.endswith('.npy'):
+        # Load signal data and auto-detect rate if possible
+        detected_rate = None
+        
+        if filename.lower().endswith('.wav'):
+            from scipy.io import wavfile
+            sample_rate_wav, signal_data = wavfile.read(filepath)
+            detected_rate = float(sample_rate_wav)
+            
+            # Ensure 1D (mono)
+            if len(signal_data.shape) > 1:
+                signal_data = signal_data[:, 0]
+                
+            # Normalize to [-1.0, 1.0] if integer type
+            if signal_data.dtype.kind in 'iu':
+                max_val = np.iinfo(signal_data.dtype).max
+                signal_data = signal_data.astype(np.float32) / max_val
+                
+        elif filename.lower().endswith('.npy'):
             signal_data = np.load(filepath)
-        elif filename.endswith('.csv'):
+            
+        elif filename.lower().endswith('.csv'):
+            # Load with delimiter
             signal_data = np.loadtxt(filepath, delimiter=',', skiprows=1)
+            # Detect rate and extract signal column if 2D
+            if len(signal_data.shape) > 1 and signal_data.shape[1] > 1:
+                col0 = signal_data[:, 0]
+                diffs = np.diff(col0)
+                if len(diffs) > 0 and np.all(diffs > 0) and np.std(diffs) < 1e-3 * np.mean(diffs):
+                    mean_diff = np.mean(diffs)
+                    if mean_diff > 0:
+                        detected_rate = float(round(1.0 / mean_diff, 2))
+                    # Column 0 is time, Column 1 is signal
+                    signal_data = signal_data[:, 1]
+                else:
+                    signal_data = signal_data[:, 0]
+            else:
+                signal_data = signal_data.flatten()
+                
         else:  # txt or others
             signal_data = np.loadtxt(filepath)
+            if len(signal_data.shape) > 1:
+                signal_data = signal_data[:, 0] if signal_data.shape[1] > 1 else signal_data.flatten()
 
-        # Ensure 1D
-        if len(signal_data.shape) > 1:
-            signal_data = signal_data[:, 0] if signal_data.shape[1] > 1 else signal_data.flatten()
+        # Parse user parameters
+        # 1. Sample Rate
+        sample_rate = 1000.0
+        if detected_rate is not None:
+            sample_rate = detected_rate
+        
+        user_rate = data.get('sample_rate')
+        if user_rate is not None:
+            try:
+                val = float(user_rate)
+                if val > 0:
+                    sample_rate = val
+            except (ValueError, TypeError):
+                pass
 
         result = {}
         plot_path = None
         result_data_for_plot = {}
 
         if operation == 'fft':
+            # Parse window option
+            window_type = data.get('fft_window', 'none')
+            if window_type == 'none' or not window_type:
+                window_type = None
+                
             # Use SignalProcessingSuite to compute magnitude spectrum
-            xf, magnitude = magnitude_spectrum(signal_data, sample_rate=1000.0, window=None)
+            xf, magnitude = magnitude_spectrum(signal_data, sample_rate=sample_rate, window=window_type)
             
             result = {
                 "frequencies": xf.tolist()[:500],
                 "magnitude": magnitude.tolist()[:500]
             }
             # Generate plot
-            plot_path = generate_suite_plot(filename, 'fft', signal_data, result)
+            plot_path = generate_suite_plot(filename, 'fft', signal_data, result, sample_rate=sample_rate)
 
         elif operation == 'filter':
+            # Parse filter kind, method, order, and cutoff
+            filter_kind = data.get('filter_kind', 'lowpass')
+            filter_method = data.get('filter_method', 'butter')
+            try:
+                filter_order = int(data.get('filter_order', 4))
+            except (ValueError, TypeError):
+                filter_order = 4
+                
+            raw_cutoff = data.get('filter_cutoff')
+            if filter_kind in ('bandpass', 'bandstop'):
+                if isinstance(raw_cutoff, list) and len(raw_cutoff) == 2:
+                    cutoff = (float(raw_cutoff[0]), float(raw_cutoff[1]))
+                elif isinstance(raw_cutoff, str) and ',' in raw_cutoff:
+                    parts = raw_cutoff.split(',')
+                    cutoff = (float(parts[0].strip()), float(parts[1].strip()))
+                else:
+                    nyquist = sample_rate / 2.0
+                    cutoff = (0.1 * nyquist, 0.5 * nyquist)
+            else:
+                try:
+                    cutoff = float(raw_cutoff) if raw_cutoff is not None else 100.0
+                except (ValueError, TypeError):
+                    cutoff = 100.0
+
             # Design and apply filter using SignalProcessingSuite
-            filtered = filter_signal(signal_data, sample_rate=1000.0, cutoff=100.0, kind='lowpass', method='butter')
+            filtered = filter_signal(
+                signal_data,
+                sample_rate=sample_rate,
+                cutoff=cutoff,
+                kind=filter_kind,
+                method=filter_method,
+                order=filter_order
+            )
 
             result = {"filtered": filtered.tolist()[:1000]}
             result_data_for_plot = {'filtered': filtered}
-            plot_path = generate_suite_plot(filename, 'filter', signal_data, result_data_for_plot)
+            plot_path = generate_suite_plot(filename, 'filter', signal_data, result_data_for_plot, sample_rate=sample_rate)
 
         elif operation == 'wavelet':
+            wavelet_type = data.get('wavelet_type', 'db4')
+            try:
+                wavelet_levels = data.get('wavelet_levels')
+                wavelet_levels = int(wavelet_levels) if wavelet_levels is not None else 3
+            except (ValueError, TypeError):
+                wavelet_levels = 3
+                
             # Perform multilevel Haar/DWT from SignalProcessingSuite
-            coeffs = dwt(signal_data, wavelet='db4', levels=3)
+            coeffs = dwt(signal_data, wavelet=wavelet_type, levels=wavelet_levels)
             
             # Save raw objects for plotting
             result_data_for_plot = {'_coeffs_obj': coeffs}
             
             # Serialize summary stats
             result = {
-                "wavelet": "db4",
+                "wavelet": wavelet_type,
                 "levels": len(coeffs) - 1,
                 "coefficients_summary": [
                     {
@@ -266,7 +481,7 @@ def process_signal():
                     for i, c in enumerate(coeffs)
                 ]
             }
-            plot_path = generate_suite_plot(filename, 'wavelet', signal_data, result_data_for_plot)
+            plot_path = generate_suite_plot(filename, 'wavelet', signal_data, result_data_for_plot, sample_rate=sample_rate)
 
         # Increment usage count
         session['usage_count'] = session.get('usage_count', 0) + 1
@@ -284,7 +499,7 @@ def process_signal():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def generate_suite_plot(original_filename, operation, original_signal, result_data):
+def generate_suite_plot(original_filename, operation, original_signal, result_data, sample_rate=1000.0):
     from SignalProcessingSuite.visualization import plot_time, plot_frequency, plot_wavelet_coefficients
     
     plt.style.use('dark_background')
@@ -301,15 +516,15 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         ax1.set_facecolor('#0a0e27')
         ax2.set_facecolor('#0a0e27')
         
-        plot_time(original_signal[:1000], sample_rate=1000.0, ax=ax1, title="Time Domain Signal")
+        plot_time(original_signal[:1000], sample_rate=sample_rate, ax=ax1, title="Time Domain Signal")
         ax1.get_lines()[0].set_color('#00ff88')
         
-        plot_frequency(original_signal, sample_rate=1000.0, ax=ax2, db=False, title="Frequency Spectrum (FFT)")
+        plot_frequency(original_signal, sample_rate=sample_rate, ax=ax2, db=False, title="Frequency Spectrum (FFT)")
         ax2.get_lines()[0].set_color('#00d4ff')
-        ax2.set_xlim(0, 500)
+        ax2.set_xlim(0, sample_rate / 2.0)
 
     elif operation == 'filter':
-        times = np.arange(min(len(original_signal), 1000)) / 1000.0
+        times = np.arange(min(len(original_signal), 1000)) / sample_rate
         ax.plot(times, original_signal[:1000], label='Original', alpha=0.7, color='#ff3344')
         ax.plot(times, result_data['filtered'][:1000], label='Filtered', color='#00ff88')
         ax.set_title('Low-Pass Filtered Signal')
@@ -328,7 +543,7 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         ax1.grid(True, alpha=0.3)
 
     else:
-        times = np.arange(min(len(original_signal), 1000)) / 1000.0
+        times = np.arange(min(len(original_signal), 1000)) / sample_rate
         ax.plot(times, original_signal[:1000], color='#ffd700')
         ax.set_title('Signal Visualization')
         ax.grid(True, alpha=0.3)

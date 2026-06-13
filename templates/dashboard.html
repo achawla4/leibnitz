@@ -259,7 +259,7 @@
             })
             .then(data => {
                 if (data.success) {
-                    window.location.href = `/?file=${encodeURIComponent(data.filename)}&name=${encodeURIComponent(file.name)}&size=${file.size}`;
+                    window.location.href = `/?file=${encodeURIComponent(data.filename)}&name=${encodeURIComponent(file.name)}&size=${file.size}&detected_rate=${data.detected_sample_rate || ''}`;
                 } else {
                     alert("Upload failed: " + data.error);
                     btn.innerText = originalText;

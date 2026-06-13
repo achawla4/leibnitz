@@ -649,9 +649,87 @@
 
             <div id="fileInfo" style="margin-top:1.5rem; text-align:center; display:none;"></div>
 
+            <!-- Signal Settings Container -->
+            <div id="settingsContainer" style="margin-top: 2rem; display: none; background: rgba(5, 8, 18, 0.5); border: 1px solid var(--border-color); border-radius: 0.8rem; padding: 1.5rem; text-align: left;">
+                <h4 style="color: var(--signal-blue); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    ⚙️ Processing Parameters
+                </h4>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <!-- Global/Rate Settings -->
+                    <div>
+                        <label for="paramSampleRate" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Sampling Rate (Hz)</label>
+                        <input type="number" id="paramSampleRate" value="1000" step="any" min="0.001" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                        <span id="rateDetectionLabel" style="font-size: 0.75rem; color: var(--signal-green); display: none; margin-top: 0.25rem;">✔ Auto-detected from file</span>
+                    </div>
+
+                    <!-- FFT Settings -->
+                    <div class="setting-group" data-op="fft">
+                        <label for="paramFftWindow" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">FFT Window Function</label>
+                        <select id="paramFftWindow" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                            <option value="none">None (Rectangular)</option>
+                            <option value="hann" selected>Hann</option>
+                            <option value="hamming">Hamming</option>
+                            <option value="blackman">Blackman</option>
+                            <option value="bartlett">Bartlett</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Settings -->
+                    <div class="setting-group" data-op="filter" style="display: grid; grid-template-columns: 1fr; gap: 1rem; grid-column: span 2;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+                            <div>
+                                <label for="paramFilterKind" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Filter Type</label>
+                                <select id="paramFilterKind" onchange="toggleFilterCutoffHelp()" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                                    <option value="lowpass" selected>Low-pass</option>
+                                    <option value="highpass">High-pass</option>
+                                    <option value="bandpass">Band-pass</option>
+                                    <option value="bandstop">Band-stop</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="paramFilterCutoff" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Cutoff Frequency (Hz)</label>
+                                <input type="text" id="paramFilterCutoff" value="100" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                                <span id="cutoffHelp" style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 0.25rem;">e.g., 100</span>
+                            </div>
+                            <div>
+                                <label for="paramFilterMethod" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Method</label>
+                                <select id="paramFilterMethod" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                                    <option value="butter" selected>Butterworth (IIR)</option>
+                                    <option value="cheby1">Chebyshev I (IIR)</option>
+                                    <option value="fir">Windowed (FIR)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="paramFilterOrder" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Filter Order</label>
+                                <input type="number" id="paramFilterOrder" value="4" min="1" max="100" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Wavelet Settings -->
+                    <div class="setting-group" data-op="wavelet" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; grid-column: span 2;">
+                        <div>
+                            <label for="paramWaveletType" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Wavelet Family</label>
+                            <select id="paramWaveletType" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                                <option value="db4" selected>Daubechies 4 (db4)</option>
+                                <option value="db2">Daubechies 2 (db2)</option>
+                                <option value="haar">Haar</option>
+                                <option value="sym2">Symlets 2 (sym2)</option>
+                                <option value="coif1">Coiflets 1 (coif1)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="paramWaveletLevels" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Decomposition Levels</label>
+                            <input type="number" id="paramWaveletLevels" value="3" min="1" max="10" style="width: 100%; background: var(--darker-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.4rem; font-size: 0.95rem;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="operation-btns" style="text-align:center; margin:2.5rem 0; display:none;" id="operationBtns">
                 <button class="btn btn-primary" onclick="processSignal('fft')">FFT Analysis</button>
-                <button class="btn btn-primary" onclick="processSignal('filter')">Apply Low-Pass Filter</button>
+                <button class="btn btn-primary" onclick="processSignal('filter')">Apply Filter</button>
                 <button class="btn btn-primary" onclick="processSignal('wavelet')">Wavelet Transform</button>
             </div>
         </div>
@@ -968,11 +1046,23 @@
             handleFile(e.target.files[0]);
         }
 
+        function toggleFilterCutoffHelp() {
+            const kind = document.getElementById('paramFilterKind').value;
+            const help = document.getElementById('cutoffHelp');
+            if (kind === 'bandpass' || kind === 'bandstop') {
+                help.innerText = 'e.g., 50, 150 (two values)';
+            } else {
+                help.innerText = 'e.g., 100 (single value)';
+            }
+        }
+
         function handleFile(file) {
             if (!file) return;
             fileInfo.innerHTML = `<strong>${file.name}</strong> (${(file.size/1024).toFixed(1)} KB)`;
             fileInfo.style.display = 'block';
             operationBtns.style.display = 'block';
+            document.getElementById('settingsContainer').style.display = 'block';
+            document.getElementById('rateDetectionLabel').style.display = 'none';
 
             const formData = new FormData();
             formData.append('file', file);
@@ -998,6 +1088,10 @@
                 if (data.success) {
                     currentFilename = data.filename;
                     console.log("✅ Uploaded:", currentFilename);
+                    if (data.detected_sample_rate !== null && data.detected_sample_rate !== undefined) {
+                        document.getElementById('paramSampleRate').value = data.detected_sample_rate;
+                        document.getElementById('rateDetectionLabel').style.display = 'inline-block';
+                    }
                 } else {
                     alert("Upload failed: " + data.error);
                 }
@@ -1011,12 +1105,29 @@
                 return;
             }
 
+            const sampleRate = parseFloat(document.getElementById('paramSampleRate').value) || 1000.0;
+            const fftWindow = document.getElementById('paramFftWindow').value;
+            const filterKind = document.getElementById('paramFilterKind').value;
+            const filterCutoff = document.getElementById('paramFilterCutoff').value;
+            const filterMethod = document.getElementById('paramFilterMethod').value;
+            const filterOrder = parseInt(document.getElementById('paramFilterOrder').value) || 4;
+            const waveletType = document.getElementById('paramWaveletType').value;
+            const waveletLevels = parseInt(document.getElementById('paramWaveletLevels').value) || 3;
+
             fetch('/api/process', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     filename: currentFilename,
-                    operation: operation
+                    operation: operation,
+                    sample_rate: sampleRate,
+                    fft_window: fftWindow,
+                    filter_kind: filterKind,
+                    filter_cutoff: filterCutoff,
+                    filter_method: filterMethod,
+                    filter_order: filterOrder,
+                    wavelet_type: waveletType,
+                    wavelet_levels: waveletLevels
                 })
             })
             .then(res => {
@@ -1096,6 +1207,8 @@
             document.getElementById('resultsSection').style.display = 'none';
             fileInfo.style.display = 'none';
             operationBtns.style.display = 'none';
+            document.getElementById('settingsContainer').style.display = 'none';
+            document.getElementById('rateDetectionLabel').style.display = 'none';
             currentFilename = null;
             document.getElementById('fileInput').value = '';
         }
@@ -1110,6 +1223,7 @@
             const fileParam = urlParams.get('file');
             const nameParam = urlParams.get('name');
             const sizeParam = urlParams.get('size');
+            const detectedRateParam = urlParams.get('detected_rate');
 
             if (fileParam && nameParam) {
                 currentFilename = fileParam;
@@ -1119,6 +1233,12 @@
                 fileInfo.innerHTML = `<strong>${nameParam}</strong> (${sizeKb} KB) <span style="color: var(--signal-blue); font-size: 0.9rem; margin-left: 0.5rem;">[Uploaded from Dashboard]</span>`;
                 fileInfo.style.display = 'block';
                 operationBtns.style.display = 'block';
+                document.getElementById('settingsContainer').style.display = 'block';
+                
+                if (detectedRateParam && detectedRateParam !== 'null') {
+                    document.getElementById('paramSampleRate').value = detectedRateParam;
+                    document.getElementById('rateDetectionLabel').style.display = 'inline-block';
+                }
 
                 // Scroll to the upload section smoothly
                 setTimeout(() => {
