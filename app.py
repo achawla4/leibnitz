@@ -451,7 +451,7 @@ def upload_file():
     if 'user' not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
-    if not has_unlimited_access() and session.get('usage_count', 0) >= 5:
+    if not has_unlimited_access() and session.get('usage_count', 0) >= 50:
         return jsonify({"error": "Usage limit reached", "redirect": "/payment"}), 402
 
     if 'file' not in request.files:
@@ -489,7 +489,7 @@ def process_signal():
     if 'user' not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
-    if not has_unlimited_access() and session.get('usage_count', 0) >= 5:
+    if not has_unlimited_access() and session.get('usage_count', 0) >= 50:
         return jsonify({"error": "Usage limit reached", "redirect": "/payment"}), 402
 
     data = request.get_json() or {}
