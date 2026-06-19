@@ -420,7 +420,7 @@ def get_usage():
         return jsonify({"error": "Unauthorized"}), 401
     return jsonify({
         "usage_count": session.get('usage_count', 0),
-        "limit": None if has_unlimited_access() else 5,
+        "limit": None if has_unlimited_access() else 50,
         "unlimited_access": has_unlimited_access()
     })
 
