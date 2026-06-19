@@ -24,6 +24,7 @@ try:
     from .utils import add_noise, generate_multitone, generate_sine, normalize, resample_signal, time_vector
     from .wavelet import compress, cwt, denoise, dwt, haar_dwt, haar_idwt, idwt
     from .blocks import BLOCK_REGISTRY, ProcessingBlock, get_block, list_blocks, timed_run
+    from .time_features import TimeFeatureBlock
 except ImportError:
     from fft_tools import (
         apply_window,
@@ -48,6 +49,7 @@ except ImportError:
     from utils import add_noise, generate_multitone, generate_sine, normalize, resample_signal, time_vector
     from wavelet import compress, cwt, denoise, dwt, haar_dwt, haar_idwt, idwt
     from blocks import BLOCK_REGISTRY, ProcessingBlock, get_block, list_blocks, timed_run
+    from time_features import TimeFeatureBlock
 
 __all__ = [
     "BLOCK_REGISTRY",
@@ -87,5 +89,6 @@ __all__ = [
     "spectral_centroid",
     "stream_process",
     "time_vector",
+    "TimeFeatureBlock",
     "timed_run",
 ]

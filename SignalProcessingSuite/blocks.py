@@ -8,6 +8,7 @@ from typing import Any, Iterable
 
 import numpy as np
 
+
 try:
     from .fft_tools import magnitude_spectrum
     from .filters import filter_signal
