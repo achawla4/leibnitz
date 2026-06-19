@@ -59,6 +59,7 @@
             text-decoration: none;
             margin-left: 2rem;
             font-weight: 500;
+            transition: color 0.3s ease;
         }
 
         .nav-links a:hover {
@@ -80,6 +81,11 @@
             font-size: 2.8rem;
             margin-bottom: 0.5rem;
             color: var(--signal-green);
+        }
+
+        .welcome p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
         }
 
         .card-grid {
@@ -114,6 +120,16 @@
             padding: 2.5rem;
             text-align: center;
             cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: var(--signal-blue);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        #dashFileInput {
+            display: none;
         }
 
         .file-list {
@@ -129,6 +145,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border: 1px solid var(--border-color);
         }
 
         .btn {
@@ -138,11 +155,19 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, var(--signal-green) 0%, #00cc6f 100%);
             color: #050812;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
         }
 
         .btn-secondary {
@@ -151,9 +176,68 @@
             border: 2px solid var(--signal-green);
         }
 
+        .btn-secondary:hover {
+            background: rgba(0, 255, 136, 0.1);
+            transform: translateY(-3px);
+        }
+
         .status {
             font-size: 0.9rem;
             color: var(--text-secondary);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-btn {
+            padding: 1rem;
+            background: var(--darker-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--signal-green);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .action-btn:hover {
+            border-color: var(--signal-green);
+            background: rgba(0, 255, 136, 0.1);
+            transform: translateX(5px);
+        }
+
+        .action-icon {
+            margin-right: 0.8rem;
+            font-size: 1.2rem;
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 4rem;
+            color: var(--text-secondary);
+        }
+
+        .footer-text a {
+            color: var(--signal-green);
+            text-decoration: none;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .welcome h1 {
+                font-size: 2rem;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -173,7 +257,7 @@
     <div class="dashboard-container">
         <div class="welcome">
             <h1>Welcome back, <span style="color:var(--signal-blue);">{{ session.get('user', 'User') }}</span>!</h1>
-            <p style="color:var(--text-secondary);">Your Signal Processing Workspace</p>
+            <p>Your Signal Processing Workspace</p>
         </div>
 
         <div class="card-grid">
@@ -201,16 +285,25 @@
             <!-- Quick Actions -->
             <div class="card">
                 <h3>⚡ Quick Actions</h3>
-                <div style="display:flex; flex-direction:column; gap:1rem;">
-                    <button class="btn btn-secondary" onclick="window.location.href='/#upload-section'">New FFT Analysis</button>
-                    <button class="btn btn-secondary" onclick="window.location.href='/#upload-section'">Apply Filter</button>
-                    <button class="btn btn-secondary" onclick="window.location.href='/#upload-section'">Wavelet Transform</button>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="goToFeatureExtraction()">
+                        <span class="action-icon">📊</span>Extract Time-Domain Features
+                    </button>
+                    <button class="action-btn" onclick="goToFFTAnalysis()">
+                        <span class="action-icon">🌊</span>FFT Analysis
+                    </button>
+                    <button class="action-btn" onclick="goToFilter()">
+                        <span class="action-icon">🎚️</span>Apply Filter
+                    </button>
+                    <button class="action-btn" onclick="goToWavelet()">
+                        <span class="action-icon">〰️</span>Wavelet Transform
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div style="text-align:center; margin-top:4rem; color:var(--text-secondary);">
-            <p>Need help? Check out the <a href="/" style="color:var(--signal-green);">Homepage</a> or contact support.</p>
+        <div class="footer-text">
+            <p>Need help? Check out the <a href="/">Homepage</a> or contact support.</p>
         </div>
     </div>
 
@@ -223,7 +316,7 @@
             }
         });
 
-        // Simple quick upload handler
+        // Quick upload handler
         function quickUpload() {
             const fileInput = document.getElementById('dashFileInput');
             if (!fileInput.files.length) {
@@ -259,6 +352,7 @@
             })
             .then(data => {
                 if (data.success) {
+                    // Redirect to main page with file info
                     window.location.href = `/?file=${encodeURIComponent(data.filename)}&name=${encodeURIComponent(file.name)}&size=${file.size}&detected_rate=${data.detected_sample_rate || ''}`;
                 } else {
                     alert("Upload failed: " + data.error);
@@ -273,17 +367,41 @@
             });
         }
 
-        // Demo: Mock recent files (can be replaced with real fetch later)
+        // Navigate to feature extraction
+        function goToFeatureExtraction() {
+            window.location.href = '/#upload-section';
+        }
+
+        // Navigate to FFT analysis
+        function goToFFTAnalysis() {
+            window.location.href = '/#upload-section';
+        }
+
+        // Navigate to filter
+        function goToFilter() {
+            window.location.href = '/#upload-section';
+        }
+
+        // Navigate to wavelet
+        function goToWavelet() {
+            window.location.href = '/#upload-section';
+        }
+
+        // Mock recent files (can be replaced with real fetch later)
         window.onload = function() {
             const fileList = document.getElementById('fileList');
             fileList.innerHTML = `
                 <div class="file-item">
                     <span>signal_sample.csv</span>
-                    <span class="status">Processed • FFT</span>
+                    <span class="status">✓ Processed</span>
                 </div>
                 <div class="file-item">
                     <span>ecg_data.npy</span>
-                    <span class="status">Processed • Filter</span>
+                    <span class="status">✓ Processed</span>
+                </div>
+                <div class="file-item">
+                    <span>vibration_10hz.wav</span>
+                    <span class="status">✓ Processed</span>
                 </div>
             `;
         };
