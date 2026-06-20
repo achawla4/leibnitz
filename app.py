@@ -104,6 +104,7 @@ def init_db():
 
 # Initialize Database
 init_db()
+init_files_table()
 
 def get_user_password(username):
     if DATABASE_URL:
@@ -207,6 +208,128 @@ def mark_user_paid(username, utr=None):
 
 def has_unlimited_access():
     return bool(session.get('is_paid')) or is_paid_user(session.get('user'))
+
+# ====================== File Metadata Database (PostgreSQL) ======================
+
+def init_files_table():
+    """Initialize the files table in PostgreSQL"""
+    if not DATABASE_URL:
+        print("DATABASE_URL not set. File tracking requires PostgreSQL.")
+        return
+    
+    import psycopg2
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS files (
+                id SERIAL PRIMARY KEY,
+                filename VARCHAR(255) UNIQUE NOT NULL,
+                original_name VARCHAR(255) NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status VARCHAR(100) DEFAULT 'Uploaded',
+                processing_count INT DEFAULT 0,
+                FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+            );
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_files_username ON files(username);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_files_uploaded_at ON files(uploaded_at DESC);")
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("Files table initialized successfully.")
+    except Exception as e:
+        print(f"Error initializing files table: {e}")
+
+def add_file_metadata(filename, original_filename, username):
+    """Add metadata for an uploaded file to PostgreSQL"""
+    if not DATABASE_URL:
+        print("File tracking requires DATABASE_URL")
+        return
+    
+    import psycopg2
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO files (filename, original_name, username, status)
+            VALUES (%s, %s, %s, 'Uploaded')
+            ON CONFLICT (filename) DO NOTHING;
+        """, (filename, original_filename, username))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error adding file metadata: {e}")
+
+def get_user_files(username, limit=10):
+    """Get recent files for a specific user from PostgreSQL"""
+    if not DATABASE_URL:
+        return []
+    
+    import psycopg2
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT filename, original_name, uploaded_at, status, processing_count
+            FROM files
+            WHERE username = %s
+            ORDER BY uploaded_at DESC
+            LIMIT %s;
+        """, (username, limit))
+        
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        formatted_files = []
+        for filename, original_name, uploaded_at, status, processing_count in rows:
+            # Format time difference
+            time_diff = datetime.now() - uploaded_at.replace(tzinfo=None)
+            
+            if time_diff.days > 0:
+                time_str = f"{time_diff.days}d ago"
+            elif time_diff.seconds > 3600:
+                time_str = f"{time_diff.seconds // 3600}h ago"
+            elif time_diff.seconds > 60:
+                time_str = f"{time_diff.seconds // 60}m ago"
+            else:
+                time_str = "now"
+            
+            formatted_files.append({
+                'filename': filename,
+                'name': original_name,
+                'uploaded_at': time_str,
+                'status': status or 'Ready',
+                'processing_count': processing_count
+            })
+        
+        return formatted_files
+    except Exception as e:
+        print(f"Error fetching user files: {e}")
+        return []
+
+def update_file_status(filename, operation_name):
+    """Update file status after processing"""
+    if not DATABASE_URL:
+        return
+    
+    import psycopg2
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE files
+            SET status = %s, processing_count = processing_count + 1
+            WHERE filename = %s;
+        """, (f"Processed • {operation_name}", filename))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error updating file status: {e}")
 
 def get_wav_sample_rate(filepath):
     import wave
@@ -466,6 +589,9 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        # Track file metadata for dashboard
+        add_file_metadata(filename, file.filename, session.get('user'))
+        
         detected_rate = None
         if filename.lower().endswith('.wav'):
             detected_rate = get_wav_sample_rate(filepath)
@@ -483,6 +609,19 @@ def upload_file():
         })
     
     return jsonify({"error": "File type not allowed"}), 400
+
+@app.route('/api/recent-files', methods=['GET'])
+def get_recent_files():
+    """Get recent files for the current user"""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    username = session.get('user')
+    files = get_user_files(username, limit=10)
+    
+    return jsonify({
+        "files": files
+    })
 
 @app.route('/api/process', methods=['POST'])
 def process_signal():
@@ -535,6 +674,10 @@ def process_signal():
 
         first_result = pipeline_results[0] if pipeline_results else {}
         last_result = pipeline_results[-1] if pipeline_results else {}
+
+        # Update file status in PostgreSQL
+        if first_result.get('name'):
+            update_file_status(filename, first_result.get('name'))
 
         # Increment usage count only for users still on the free tier.
         if not has_unlimited_access():

@@ -273,19 +273,41 @@
             });
         }
 
-        // Demo: Mock recent files (can be replaced with real fetch later)
-        window.onload = function() {
+        // Fetch recent files from API
+        function loadRecentFiles() {
             const fileList = document.getElementById('fileList');
-            fileList.innerHTML = `
-                <div class="file-item">
-                    <span>signal_sample.csv</span>
-                    <span class="status">Processed • FFT</span>
-                </div>
-                <div class="file-item">
-                    <span>ecg_data.npy</span>
-                    <span class="status">Processed • Filter</span>
-                </div>
-            `;
+            fileList.innerHTML = '<p class="status">Loading files...</p>';
+
+            fetch('/api/recent-files')
+                .then(res => {
+                    if (res.status === 401) {
+                        throw new Error("Unauthorized");
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.files && data.files.length > 0) {
+                        fileList.innerHTML = data.files.map(file => `
+                            <div class="file-item">
+                                <div>
+                                    <span style="display:block; font-weight:600;">${file.name}</span>
+                                    <span class="status">${file.uploaded_at}</span>
+                                </div>
+                                <span class="status">${file.status || 'Ready'}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        fileList.innerHTML = '<p class="status">No files uploaded yet.</p>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load files:', err);
+                    fileList.innerHTML = '<p class="status">Failed to load files. Please try again.</p>';
+                });
+        }
+
+        window.onload = function() {
+            loadRecentFiles();
         };
     </script>
 </body>
