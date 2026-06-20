@@ -675,6 +675,14 @@
                         </select>
                     </div>
 
+                    <!-- IFFT Settings -->
+                    <div class="setting-group" data-op="ifft">
+                        
+                        
+                    </div>
+
+
+
                     <!-- Filter Settings -->
                     <div class="setting-group" data-op="filter" style="display: grid; grid-template-columns: 1fr; gap: 1rem; grid-column: span 2;">
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
@@ -729,6 +737,7 @@
 
             <div class="operation-btns" style="text-align:center; margin:2.5rem 0; display:none;" id="operationBtns">
                 <button class="btn btn-primary" onclick="processSignal('fft')">FFT Analysis</button>
+		<button class="btn btn-primary" onclick="processSignal('ifft')">IFFT Analysis</button>
                 <button class="btn btn-primary" onclick="processSignal('filter')">Apply Filter</button>
                 <button class="btn btn-primary" onclick="processSignal('wavelet')">Wavelet Transform</button>
             </div>
@@ -811,13 +820,7 @@
                             <p>Float32, Float64, and fixed-point representations</p>
                         </div>
                     </div>
-                    <div class="spec-item">
-                        <span class="spec-check">✓</span>
-                        <div>
-                            <h4>Multi-threaded</h4>
-                            <p>Parallel processing on multi-core systems</p>
-                        </div>
-                    </div>
+                    
                 </div>
             </div>
             <div class="visualization-dual">

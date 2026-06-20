@@ -44,6 +44,16 @@ def plot_frequency(signal: Iterable[float], sample_rate: float, ax=None, db: boo
     ax.set(title=title, xlabel="Frequency (Hz)", ylabel="Magnitude (dB)" if db else "Magnitude")
     return ax
 
+def plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = False, title: str = "Time Domain IFFT"):
+    """Plot a timedomain ifft signal and return the Matplotlib axis."""
+    plt = _pyplot()
+    ax = ax or plt.subplots()[1]
+    timesamples = np.fft.ifft(signal)
+    ax.plot(np.arange(np.len(timesamples)), timesamples)
+    ax.set(title=title, xlabel="Time (s)", ylabel="Amplitude")
+    return ax
+
+
 
 def plot_spectrogram(
     signal: Iterable[float],

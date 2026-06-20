@@ -718,12 +718,31 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         ax1.set_facecolor('#0a0e27')
         ax2.set_facecolor('#0a0e27')
         
-        plot_time(original_signal, sample_rate=sample_rate, ax=ax1, title="Time Domain Signal")
+        plot_time(original_signal[:1000], sample_rate=sample_rate, ax=ax1, title="Time Domain Signal")
         ax1.get_lines()[0].set_color('#00ff88')
         
         plot_frequency(original_signal, sample_rate=sample_rate, ax=ax2, db=False, title="Frequency Spectrum (FFT)")
         ax2.get_lines()[0].set_color('#00d4ff')
         ax2.set_xlim(0, sample_rate / 2.0)
+
+    elif operation == 'ifft':
+        fig.clf()
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), facecolor='#0a0e27')
+        ax1.set_facecolor('#0a0e27')
+        ax2.set_facecolor('#0a0e27')
+        
+       
+        
+        plot_frequency(original_signal, sample_rate=sample_rate, ax=ax2, db=False, title="Frequency Spectrum (FFT)")
+        ax1.get_lines()[0].set_color('#00d4ff')
+        ax1.set_xlim(0, sample_rate / 2.0)
+
+
+	plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = False, title: str = "Time Domain IFFT"):
+  	ax2.get_lines()[0].set_color('#00d4ff')
+	ax2.set_xlim(0, 1000)
+
+
 
     elif operation == 'filter':
         times = np.arange(min(len(original_signal), 1000)) / sample_rate
