@@ -702,7 +702,7 @@ def process_signal():
         return jsonify({"error": str(e)}), 500
 
 def generate_suite_plot(original_filename, operation, original_signal, result_data, sample_rate=1000.0):
-    from SignalProcessingSuite.visualization import plot_time, plot_frequency, plot_wavelet_coefficients
+    from SignalProcessingSuite.visualization import plot_time, plot_frequency, plot_ifft, plot_wavelet_coefficients
     
     plt.style.use('dark_background')
     fig, ax = plt.subplots(figsize=(12, 6), facecolor='#0a0e27')
@@ -738,9 +738,9 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         ax1.set_xlim(0, sample_rate / 2.0)
 
 
-	plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = False, title: str = "Time Domain IFFT"):
-  	ax2.get_lines()[0].set_color('#00d4ff')
-	ax2.set_xlim(0, 1000)
+        plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = False, title: str = "Time Domain IFFT"):
+        ax2.get_lines()[0].set_color('#00d4ff')
+        ax2.set_xlim(0, 1000)
 
 
 
