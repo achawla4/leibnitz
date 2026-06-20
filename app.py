@@ -718,7 +718,7 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         ax1.set_facecolor('#0a0e27')
         ax2.set_facecolor('#0a0e27')
         
-        plot_time(original_signal[:1000], sample_rate=sample_rate, ax=ax1, title="Time Domain Signal")
+        plot_time(original_signal, sample_rate=sample_rate, ax=ax1, title="Time Domain Signal")
         ax1.get_lines()[0].set_color('#00ff88')
         
         plot_frequency(original_signal, sample_rate=sample_rate, ax=ax2, db=False, title="Frequency Spectrum (FFT)")
