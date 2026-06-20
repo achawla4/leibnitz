@@ -102,9 +102,7 @@ def init_db():
     except Exception as e:
         print(f"Error initializing PostgreSQL database: {e}")
 
-# Initialize Database
-init_db()
-init_files_table()
+
 
 def get_user_password(username):
     if DATABASE_URL:
@@ -241,6 +239,11 @@ def init_files_table():
         print("Files table initialized successfully.")
     except Exception as e:
         print(f"Error initializing files table: {e}")
+
+# Initialize Database
+init_db()
+init_files_table()
+
 
 def add_file_metadata(filename, original_filename, username):
     """Add metadata for an uploaded file to PostgreSQL"""
