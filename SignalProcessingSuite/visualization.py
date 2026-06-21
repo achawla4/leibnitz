@@ -49,7 +49,7 @@ def plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = F
     plt = _pyplot()
     ax = ax or plt.subplots()[1]
     timesamples = np.fft.ifft(signal)
-    ax.plot(np.arange(np.len(timesamples)), timesamples)
+    ax.plot(np.arange(len(timesamples)), timesamples)
     ax.set(title=title, xlabel="Time (s)", ylabel="Amplitude")
     return ax
 
