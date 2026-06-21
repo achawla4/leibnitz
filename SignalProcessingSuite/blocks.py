@@ -19,6 +19,7 @@ except ImportError:
     from wavelet import dwt
 
 
+
 @dataclass
 class BlockRunResult:
     """Result returned by a processing block."""
@@ -75,7 +76,57 @@ class FFTBlock(ProcessingBlock):
             metadata={"window": window_type or "none"},
         )
 
+class ifftBlock(ProcessingBlock):
+    id = "ifft"
+    name = "IFFT Analysis"
+    category = "frequency"
 
+    input_schema = {
+        "signal": "1d-array",
+        "sample_rate": "positive-float"
+    }
+
+    output_schema = {
+        "timesamples": "array",
+        "indices": "array"
+    }
+
+    default_params = {
+        "ifft_window": "none"
+    }
+
+    def run(
+        self,
+        signal: Iterable[float],
+        sample_rate: float,
+        params: dict[str, Any]
+    ) -> BlockRunResult:
+
+        params = self.validate(params, sample_rate)
+
+        window_type = params.get("ifft_window", "none")
+        if window_type == "none" or not window_type:
+            window_type = None
+
+        signal = np.asarray(signal)
+
+        timesamples = np.real(np.fft.ifft(signal))
+        indices = np.arange(len(timesamples))
+
+        return BlockRunResult(
+            result={
+                "indices": indices.tolist()[:500],
+                "timesamples": timesamples.tolist()[:500],
+            },
+            plot_data={
+                "indices": indices,
+                "timesamples": timesamples,
+            },
+            metadata={
+                "window": window_type or "none",
+            },
+        )
+    
 class FilterBlock(ProcessingBlock):
     id = "filter"
     name = "Filter"
@@ -197,6 +248,7 @@ BLOCK_REGISTRY: dict[str, ProcessingBlock] = {
         FFTBlock(),
         FilterBlock(),
         WaveletBlock(),
+        ifftBlock(),
     )
 }
 

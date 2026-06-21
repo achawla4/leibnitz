@@ -733,14 +733,27 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         
        
         
-        plot_frequency(original_signal, sample_rate=sample_rate, ax=ax2, db=False, title="Frequency Spectrum (FFT)")
+        plot_frequency(original_signal, sample_rate=sample_rate, ax=ax1, db=False, title="Frequency Spectrum (FFT)")
         ax1.get_lines()[0].set_color('#00d4ff')
         ax1.set_xlim(0, sample_rate / 2.0)
 
+        plot_ifft(
+            signal,
+            sample_rate=sample_rate,
+            ax=ax2,
+            db=False,
+            title="Time Domain IFFT"
+        )
 
-        plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = False, title: str = "Time Domain IFFT"):
-        ax2.get_lines()[0].set_color('#00d4ff')
+        lines = ax2.get_lines()
+
+        if lines:
+            lines[0].set_color('#00d4ff')
+
         ax2.set_xlim(0, 1000)
+        # plot_ifft(signal, sample_rate=sample_rate, ax=ax2, db= False, title= "Time Domain IFFT")
+        # ax2.get_lines()[0].set_color('#00d4ff')
+        # ax2.set_xlim(0, 1000)
 
 
 
