@@ -48,7 +48,7 @@ def plot_ifft(signal: Iterable[float], sample_rate: float, ax=None, db: bool = F
     """Plot a timedomain ifft signal and return the Matplotlib axis."""
     plt = _pyplot()
     ax = ax or plt.subplots()[1]
-    timesamples = np.fft.ifft(signal)
+    timesamples = np.real(np.fft.ifft(signal))
     ax.plot(np.arange(len(timesamples)), timesamples)
     ax.set(title=title, xlabel="Time (s)", ylabel="Amplitude")
     return ax

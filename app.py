@@ -738,7 +738,7 @@ def generate_suite_plot(original_filename, operation, original_signal, result_da
         ax1.set_xlim(0, sample_rate / 2.0)
 
         plot_ifft(
-            signal,
+            original_signal,
             sample_rate=sample_rate,
             ax=ax2,
             db=False,
